@@ -6,11 +6,11 @@
 
 * Status
 
-- Version: =2.0.0=
-- Status: SEALED at v2.0.0 — frozen; any change requires a new version + re-seal
+- Version: =2.0.1=
+- Status: SEALED at v2.0.1 — frozen; any change requires a new version + re-seal
 - Date: 2026-09-10
 - Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe — a
-  source→derivation→view /bootstrapper/ scoped mostly to the simple linear chain).
+  source-derivation-view /bootstrapper/ scoped mostly to the simple linear chain).
   This is a major generalization: from "how to stamp one chain-shaped exercise"
   to "the interview framework that grades the whole ladder across all structure
   classes, plus the event-sourcing/streaming interview dimension."
@@ -25,7 +25,7 @@
 
 This spec is a *reading and grading instrument*, not merely a bootstrapper. It
 states one core pattern, the *structure taxonomy* that says how each class is
-soundly projected, the *eventing interview* probes and rubric, the challenge→
+soundly projected, the *eventing interview* probes and rubric, the challenge->
 concept map, and the interview flow. The picker (=aygp-dr/picker-state-projection=)
 is the reference /chain/ instance; §1 is kept verbatim from it, and everything
 after generalizes it.
@@ -37,11 +37,11 @@ Every challenge is the same three artifacts and one claim.
 | role              | what it is                                       | property                     |
 |-------------------+--------------------------------------------------+------------------------------|
 | *source of truth* | append-only log, ordered, one row per event      | the only thing you may trust |
-| *derivation*      | a /pure function/ log → view                      | replay = reprocess = rebuild |
+| *derivation*      | a /pure function/ log -> view                      | replay = reprocess = rebuild |
 | *view*            | a lossy, convenient projection of the log         | derived; never authoritative |
 
 The deep FP statement, portable to every instance: the derivation is a
-*catamorphism over the free monoid on events* — a pure function =[Event] →
+*catamorphism over the free monoid on events* — a pure function =[Event] ->
 View=. So "same log, same view" is *referential transparency*, not something you
 enforce; *replay*, *reprocessing*, and *rebuild* are all "apply the same pure
 function to the same list." A state machine is therefore *a deterministic
@@ -88,7 +88,7 @@ Two order-theoretic notions carry across the whole table:
 
 ** 2.2. Cycle / reversible graph — NOT a poset
 
-- *Instances*: challenge 02 traffic-light (3-cycle =red→green→yellow→red=);
+- *Instances*: challenge 02 traffic-light (3-cycle =red->green->yellow->red=);
   challenge 04 lamp-two-switch (the Boolean lattice ={0,1}²= as a strongly-
   connected reversible graph); challenge 03 elevator (a large /product/ automaton
   with a request set — same lesson: not a chain, not acyclic).
@@ -160,7 +160,7 @@ Two order-theoretic notions carry across the whole table:
 ** 2.6. Pushdown / register machine — state is (control, stack)
 
 - *Instances*: challenge 07 lr-parser-fsm (an LR(0) automaton, states =0..8=,
-  accepting ={0,3,4,8}=, self-loops and back-edges → cyclic, /needs a stack/);
+  accepting ={0,3,4,8}=, self-loops and back-edges -> cyclic, /needs a stack/);
   challenge 08 register-machine (SICP §5.1 controller over a datapath: GCD is a
   loop, factorial is a loop + a stack).
 - *(a) valid projection*: for the parser, the *parse outcome* (accept iff at an
@@ -178,12 +178,12 @@ Two order-theoretic notions carry across the whole table:
 
 ** 2.7. Replicated state machine — the unifier
 
-- *Instance*: challenge 09 raft-replicated-sm (roles =follower → candidate →
+- *Instance*: challenge 09 raft-replicated-sm (roles =follower -> candidate ->
   leader=, reset to =follower= on higher term; the *replicated log* is the source
   of truth; each node =apply=s the committed log to derive state).
 - *(a) valid projection*: two folds — (i) the role FSM over election/heartbeat
   events (a cycle, §2.2); (ii) the *replicated state machine* =apply(committed_log)
-  → state=. The projection of interest: *every replica's derived state agrees*.
+  -> state=. The projection of interest: *every replica's derived state agrees*.
 - *(b) wide flags SOUND?*: the role FSM is a cycle (unsound wide flags); the applied
   state machine is whatever S the application is — the point is not the shape but
   the *replication*.
@@ -207,18 +207,18 @@ Two order-theoretic notions carry across the whole table:
 | poset/tree (2.3) | ancestor-closed set (down-set)   | sound, not complete    | down-set + one-leaf rule           |
 | DAG (2.4)        | down-set of the DAG              | sound, not complete    | down-set + current_state column    |
 | DFA (2.5)        | accept/reject (one bit)          | n/a (cyclic; collapses)| fold = δ*, test accepting set      |
-| pushdown/reg (2.6)| (control, stack) → outcome      | *no — beyond finite*   | fold through (control, stack)      |
+| pushdown/reg (2.6)| (control, stack) -> outcome      | *no — beyond finite*   | fold through (control, stack)      |
 | replicated (2.7) | apply(committed_log); replicas agree | n/a (unifier)      | replicate log, apply deterministically |
 
 * 3. The eventing interview dimension
 
 The taxonomy grades the /structure/. This section grades the /eventing/ — event
-sourcing and streaming — because the same log→derivation→view shape is where
+sourcing and streaming — because the same log->derivation->view shape is where
 every one of these concepts /bites/. Each probe below names the concept, where it
 bites in the ladder, and what a strong answer looks like. The rubric (§3.2)
 weights the signals, generalizing the picker README's rubric.
 
-** 3.1. The probes (concept → where it bites → strong answer)
+** 3.1. The probes (concept -> where it bites -> strong answer)
 
 | # | concept                          | where it bites                                          | strong answer                                                                 |
 |---+----------------------------------+---------------------------------------------------------+-------------------------------------------------------------------------------|
@@ -267,7 +267,7 @@ integrity violation; EM: single-writer violation; MQ: out-of-band write; RA:
 bypassing the view definition; OT: a row not in the image of the fold). Surfacing
 whether a candidate reaches for it is part of the exercise's design.
 
-* 4. Challenge → structure class + eventing concepts
+* 4. Challenge -> structure class + eventing concepts
 
 Each ladder challenge, its structure class (§2), and the eventing concepts (§3.1)
 it best probes.
@@ -314,7 +314,7 @@ than one who holds one deeply.
 
 * 6. Acceptance — what "done" means for this spec
 
-- §1 core pattern kept verbatim from the picker (source→derivation→view; fold =
+- §1 core pattern kept verbatim from the picker (source-derivation-view; fold =
   catamorphism over the free monoid; replay = reprocess = rebuild).
 - §2 taxonomy covers chain, cycle/reversible graph, containment poset/tree, DAG,
   DFA, pushdown/register machine, replicated SM — each with (a) valid projection,
@@ -352,14 +352,18 @@ Each row is frozen by an annotated git tag; the tag message records
 
 | version | date       | tag           | seals |
 |---------+------------+---------------+-------|
-| 2.0.0   | 2026-09-10 | =spec-v2.0.0= | generalization to the state-machine + eventing interview: §1 core pattern verbatim; §2 structure taxonomy (chain→replicated SM) with soundness/completeness; §3 eventing probes E1–E10 + rubric; §4 challenge map; §5 interview flow |
-| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded — copied picker generator) the source→derivation→view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
+| 2.0.0   | 2026-09-10 | =spec-v2.0.0= | generalization to the state-machine + eventing interview: §1 core pattern verbatim; §2 structure taxonomy (chain->replicated SM) with soundness/completeness; §3 eventing probes E1–E10 + rubric; §4 challenge map; §5 interview flow |
+| 2.0.1   | 2026-09-10 | =spec-v2.0.1= | typographic: purge the U+2192 arrow glyph from copy (style); no semantic change |
+| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded — copied picker generator) the source-derivation-view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
 
 * Changelog
 
+- =2.0.1= (2026-09-10) — typographic only: purge the U+2192 arrow glyph from all
+  copy (per style); ASCII "->" kept only for technical transition notation,
+  named patterns written hyphenated (source-derivation-view). No semantic change.
 - =2.0.0= (2026-09-10) — *major generalization*. Rewrote the copied picker
   generator (v1.1.0) into the generic *state-machine + eventing interview* spec
-  that grades the whole ladder. Kept the core source→derivation→view pattern
+  that grades the whole ladder. Kept the core source-derivation-view pattern
   verbatim (§1). Added the *structure taxonomy* (§2): chain, cycle/reversible
   graph, containment poset/tree, DAG, DFA, pushdown/register machine, replicated
   state machine — each with valid projection, wide-flag soundness verdict, right
@@ -368,7 +372,7 @@ Each row is frozen by an annotated git tag; the tag message records
   processing-time, idempotence/dedup, replay, compaction, exactly-once vs
   at-least-once, CQRS aggregate-validates vs projector-reports, event-carried
   state, backpressure/straggler/late-arrival, replication/determinism) and a
-  weighted interviewer rubric with the anti-signal. Added the challenge→class+
+  weighted interviewer rubric with the anti-signal. Added the challenge->class+
   concept map (§4), the interview flow with structure-class/vocabulary switches
   (§5), acceptance criteria for the spec itself (§6). The picker is now the
   reference /chain/ instance rather than the whole story.

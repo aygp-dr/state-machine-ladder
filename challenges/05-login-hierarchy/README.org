@@ -7,8 +7,8 @@ learntla.com, /State Machines/ (hierarchical section).
 * The machine
 - Leaves: =LogOut=, =Main=, =Settings=, =Report1=, =Report2=.
 - Hierarchy: =LogIn ⊃ {Main, Settings, Reports}=, =Reports ⊃ {Report1, Report2}=.
-- Navigation (cyclic): =Main↔Settings=, =Report1↔Report2=, =LogIn→LogOut=,
-  =LogOut→Main=, =Reports→Main=.
+- Navigation (cyclic): =Main↔Settings=, =Report1↔Report2=, =LogIn->LogOut=,
+  =LogOut->Main=, =Reports->Main=.
 - Structure S: the *containment hierarchy is a tree — a genuine poset* (distinct
   from the linear chain); the transition graph on top of it has cycles.
 * What to implement

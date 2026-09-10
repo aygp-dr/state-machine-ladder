@@ -7,12 +7,12 @@
 
 [[./bin/verify.sh][https://img.shields.io/badge/reference-1%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
-[[./spec.org][https://img.shields.io/badge/spec-v2.0.0-blue.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v2.0.1-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
 [[./README.org][https://img.shields.io/badge/cell-FreeBSD_amd64-orange.svg]]
 
 Nine state machines of increasing difficulty, each posed as the same problem:
-*reconstruct a view from a log*. Every machine is a source→derivation→view
+*reconstruct a view from a log*. Every machine is a source-derivation-view
 instance (see [[./spec.org][=spec.org=]]) — the source is an append-only event log, the
 derivation is a pure fold, and the view is a projection. Your job is to implement
 the fold and reproduce the challenge's byte-exact oracle. The ladder climbs from
@@ -32,7 +32,7 @@ problem: /a state machine is a deterministic function of its log/.
 | 6 | dfa-even-01        | complete DFA (cyclic)    | 5          | Hopcroft          | open    |
 | 7 | lr-parser-fsm      | LR automaton + stack     | 6          | Graphviz gallery  | open    |
 | 8 | register-machine   | controller + datapath    | 7          | SICP §5.1         | open    |
-| 9 | raft-replicated-sm | replicated log → apply   | 8          | Raft / C. Troy    | open    |
+| 9 | raft-replicated-sm | replicated log -> apply   | 8          | Raft / C. Troy    | open    |
 
 The structure column is the point: a *chain* has a sound wide-flag projection
 (down-sets); a *cycle* or *reversible graph* does not — there the view must be
@@ -60,8 +60,8 @@ judged) — build the fixtures + reference per =spec.org= §8 and pin the oracle
 
 | path                     | what                                                    |
 |--------------------------+---------------------------------------------------------|
-| =challenges/NN-<name>/=  | one state machine, easy → hard                           |
-| =spec.org=               | the generator: the source→derivation→view pattern       |
+| =challenges/NN-<name>/=  | one state machine, easy -> hard                           |
+| =spec.org=               | the generator: the source-derivation-view pattern       |
 | =.meta/=                 | operating disciplines and vocabulary                    |
 | =bin/verify.sh=          | ladder runner (PASS / FAIL / OPEN per challenge)        |
 | =bin/new-exercise=       | stamp a new challenge skeleton from the §2 parameters   |

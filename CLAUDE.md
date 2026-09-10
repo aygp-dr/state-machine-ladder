@@ -3,7 +3,7 @@
 ## What Is This
 
 A graded set of nine state machines, each posed as "reconstruct a view from a
-log" (source→derivation→view, see `spec.org`). Challenge 01 is a worked, green
+log" (source-derivation-view, see `spec.org`). Challenge 01 is a worked, green
 reference; 02–09 are open challenges to implement. `README.org` is canonical.
 
 ## Quick Reference
@@ -25,11 +25,11 @@ A challenge is *solved* when it has `examples/oracle-contract.txt`, an
 
 ## Conventions
 
-- Every challenge is a source→derivation→view instance (`spec.org`): pure fold,
+- Every challenge is a source-derivation-view instance (`spec.org`): pure fold,
   shared fixtures in the challenge's `data/`, oracle-gated, re-tell not port.
 - Pick the *right projection* for the structure S: a chain admits wide flags
   (down-sets); a cycle/reversible graph does not (use current-state +
-  transition-legality); a poset restores down-sets; a DFA → accept/reject.
+  transition-legality); a poset restores down-sets; a DFA -> accept/reject.
 - Documentation is org-mode; conventional commits, one logical step, stage by name.
 
 ## What NOT to Do

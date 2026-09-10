@@ -92,6 +92,6 @@ path, not only the endpoint.
 
 * The shape of a good move
 
-Survey → state or pin the oracle → smallest thing → run it (negative-test the
-checker) → declare it (conventional commit, note the timeline) → capture the
+Survey -> state or pin the oracle -> smallest thing -> run it (negative-test the
+checker) -> declare it (conventional commit, note the timeline) -> capture the
 lesson. The whole method is an apparatus for not fooling yourself.

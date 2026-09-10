@@ -52,7 +52,7 @@ for I2, non-empty. I1 + I2 are that single order-theoretic property.
 * Terms coined / sharpened here
 
 - *fold as catamorphism* — the FP statement of "same log, same output": the fold
-  is a pure function =[Event] → Projection=, a catamorphism over the free monoid
+  is a pure function =[Event] -> Projection=, a catamorphism over the free monoid
   on events. Replay, reprocessing, and rebuild are all "apply the same pure
   function to the same list"; referential transparency is then free, not
   enforced.

@@ -6,7 +6,7 @@
 Classic FSM; TLA+ model is tiny. (Chelsea Troy, /Raft, Threads, Processes, and State Machines/.)
 * The machine
 - States: =red=, =green=, =yellow= (a 3-cycle).
-- Transitions (the only legal ones): =red→green=, =green→yellow=, =yellow→red=.
+- Transitions (the only legal ones): =red->green=, =green->yellow=, =yellow->red=.
 - Structure S: a *cycle* — NOT a poset. This is the refutation case (spec §5).
 * What to implement
 Fold a per-signal log =(signal_id, state, ts)= (arrival order) into the *current
