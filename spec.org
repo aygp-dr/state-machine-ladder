@@ -1,309 +1,377 @@
-#+TITLE: spec — the concept-exercise generator
-#+SUBTITLE: How picker-state-projection was built, generalized to rebuild it for any source→derivation→view problem
+#+TITLE: spec — the state-machine + eventing interview
+#+SUBTITLE: The interview framework that generalizes the picker (the simple-chain case) across every structure class, and adds the event-sourcing / streaming dimension
 #+AUTHOR: Aidan Pace
 #+OPTIONS: toc:2 num:t ^:nil
 #+STARTUP: overview
 
 * Status
 
-- Version: =1.1.0=
-- Status: SEALED at v1.1.0 — frozen; any change requires a new version + re-seal
+- Version: =2.0.0=
+- Status: SEALED at v2.0.0 — frozen; any change requires a new version + re-seal
 - Date: 2026-09-10
-- Supersedes: =1.0.0= (adds §12, the =bin/new-exercise= bootstrapper)
+- Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe — a
+  source→derivation→view /bootstrapper/ scoped mostly to the simple linear chain).
+  This is a major generalization: from "how to stamp one chain-shaped exercise"
+  to "the interview framework that grades the whole ladder across all structure
+  classes, plus the event-sourcing/streaming interview dimension."
 - Seal: each version is frozen by an annotated git tag =spec-vX.Y.Z= whose message
   records =sha256(spec.org)= of the committed blob (verify:
-  =git show spec-vX.Y.Z:spec.org | sha256=). See §Seals for the ledger.
-- Governs: this repo is /one instantiation/ of this spec; =README.org= is the
-  instantiated exercise, this file is the recipe that produces such exercises.
+  =git show spec-vX.Y.Z:spec.org | sha256sum=). See §Seals for the ledger.
+- Governs: this is the *authoritative* spec the whole ladder (=README.org= +
+  =challenges/NN-*/=) is graded against. Where a challenge and this file disagree
+  about /how a structure class is projected or probed/, this file wins; where they
+  disagree about /the specific fixtures/oracle of one challenge/, that challenge's
+  README wins for that challenge.
 
-This spec is a *generator*, not a description. It states the reusable shape,
-the parameters to fill, and the order of moves — so an agent or human can
-rebuild an exercise of this kind for a different problem (event-focused or
-otherwise) without re-deriving the method. Where it and =README.org= disagree
-about /this/ repo, =README.org= wins; where they disagree about /how to build a
-new one/, this file wins.
+This spec is a *reading and grading instrument*, not merely a bootstrapper. It
+states one core pattern, the *structure taxonomy* that says how each class is
+soundly projected, the *eventing interview* probes and rubric, the challenge→
+concept map, and the interview flow. The picker (=aygp-dr/picker-state-projection=)
+is the reference /chain/ instance; §1 is kept verbatim from it, and everything
+after generalizes it.
 
-* 0. What kind of thing we build
+* 1. The core pattern (kept verbatim from the picker)
 
-A *concept-exercise*: a single small problem that is (a) worth thinking about in
-more than one professional vocabulary, (b) implementable once per vocabulary in
-the language that frames it best, and (c) gated by one byte-exact oracle so the
-whole thing cannot rot. picker-state-projection is the reference instance:
-"a wide state-flag projection is broken; prove what you can, backtrack to the
-log, rebuild it."
+Every challenge is the same three artifacts and one claim.
 
-The exercise is used for interviewing, teaching, and as a polyglot Rosetta —
-but the /construction method/ is the transferable asset, and it is what this
-spec captures.
+| role              | what it is                                       | property                     |
+|-------------------+--------------------------------------------------+------------------------------|
+| *source of truth* | append-only log, ordered, one row per event      | the only thing you may trust |
+| *derivation*      | a /pure function/ log → view                      | replay = reprocess = rebuild |
+| *view*            | a lossy, convenient projection of the log         | derived; never authoritative |
 
-* 1. The pattern (the abstract shape)
+The deep FP statement, portable to every instance: the derivation is a
+*catamorphism over the free monoid on events* — a pure function =[Event] →
+View=. So "same log, same view" is *referential transparency*, not something you
+enforce; *replay*, *reprocessing*, and *rebuild* are all "apply the same pure
+function to the same list." A state machine is therefore *a deterministic
+function of its log* — the sentence the whole ladder turns on, and the sentence
+Raft (§2.7, challenge 09) makes fault-tolerant.
 
-Every instantiation is the same three artifacts and one claim.
+The picker is the simplest instance: a *chain*, whose view is a set of wide state
+flags. The claim there — "the wide-flag view is broken, and only some defects
+survive a clean rebuild" — is exactly what the taxonomy below generalizes. For
+most structure classes *the wide-flag view is not even sound*, and choosing the
+right projection is half of each challenge.
 
-| role              | what it is                                        | property                    |
-|-------------------+---------------------------------------------------+-----------------------------|
-| *source of truth* | append-only record, ordered, one row per fact     | the only thing you may trust |
-| *derivation*      | a /pure function/ source → view                    | replay = reprocess = rebuild |
-| *view*            | a lossy, convenient projection of the source       | derived; never authoritative |
+* 2. The structure taxonomy
 
-The claim the exercise turns on: *the view is broken, and only some defects
-survive a clean rebuild.* Classifying which is the whole game. The deep FP
-statement (portable to any instance): the derivation is a *catamorphism over the
-free monoid on the source*, so "same source, same view" is referential
-transparency, not something you enforce.
+For each structure class S we state (a) what a *valid projection* is, (b) whether
+the *wide-flag projection is SOUND*, (c) the *right projection* when it is not,
+(d) the *invariants* that apply. The wide-flag view (one boolean column per
+state, downward-closed) is the picker's view; it is the special case, not the
+general one.
 
-Why this generalizes past events: any domain with a /source you may edit/ and a
-/view you must not/ has this shape — event logs and read models, but equally
-formula cells and recomputed values, dependency declarations and build order,
-grant records and effective-permission matrices. If you can name the source, the
-pure derivation, and the view, you can instantiate.
+Two order-theoretic notions carry across the whole table:
 
-* 2. Parameters (fill these to instantiate)
+- *down-set (order ideal)*: a set that is downward-closed under S. The picker's
+  I1 (predecessor-closure) + I2 (non-empty) are exactly "the flag-set is a
+  non-empty down-set of the chain."
+- *soundness vs completeness* of the wide-flag view: /sound/ = every row the view
+  emits is a valid element of S (a real down-set); /complete/ = a valid row
+  determines exactly one current state. On a chain both hold; the ladder walks
+  the classes where one or both break.
 
-The entire exercise is determined by filling this table. §9 fills it for the
-reference; §10 fills it twice more.
+** 2.1. Chain — total order
 
-| # | parameter        | meaning                                                            |
-|---+------------------+-------------------------------------------------------------------|
-| P1 | =CONCEPT=        | the one-line problem and its source / derivation / view names      |
-| P2 | =STRUCTURE S=    | the order/graph the view encodes (chain, poset, DAG, lattice…)     |
-| P3 | =VOCABULARIES=   | N practitioner framings, ranked by documentation prevalence        |
-| P4 | =INVARIANTS=     | the schema gate + the structure gate + the one unobservable prop.  |
-| P5 | =DEFECTS=        | one deliberate defect per invariant, injected into the fixtures    |
-| P6 | =LANGUAGES=      | one per vocabulary, the one that frames it best                     |
-| P7 | =ORACLE=         | the byte-exact output every implementation must reproduce          |
+- *Instance*: challenge 01 order-lifecycle (=placed < paid < shipped <
+  delivered=); the picker (=received < picking < picked < packed=).
+- *(a) valid projection*: a non-empty *down-set* of the chain — wide flags,
+  downward-closed.
+- *(b) wide flags SOUND?*: *yes*, and complete. This is the one class where the
+  picker's whole apparatus applies unchanged.
+- *(c) right projection*: the wide flags themselves.
+- *(d) invariants*: schema gate (I3 domain, I4 arity, I5 unique key) checked
+  /before/ the structure gate; structure gate I1 predecessor-closure + I2
+  non-empty = down-set; the *unobservable* I6 = arrival order agrees with
+  event-time (a straggler check — the one property the view forgets).
 
-Two rules that make the fill sound:
+** 2.2. Cycle / reversible graph — NOT a poset
 
-1. *One defect per invariant, and a control.* Every invariant must have at least
-   one fixture row that violates it and at least one clean row, so each check is
-   negative- and positive-tested by construction.
-2. *Split the defects by provenance.* Some live in the source and survive any
-   rebuild; the rest live in the derivation/serializer and vanish on a clean
-   rebuild. That split is the point of the "backtrack to the log" step.
+- *Instances*: challenge 02 traffic-light (3-cycle =red→green→yellow→red=);
+  challenge 04 lamp-two-switch (the Boolean lattice ={0,1}²= as a strongly-
+  connected reversible graph); challenge 03 elevator (a large /product/ automaton
+  with a request set — same lesson: not a chain, not acyclic).
+- *(a) valid projection*: the *current state* ∈ the (finite) state set, plus a
+  transition-legality assertion over consecutive events.
+- *(b) wide flags SOUND?*: *no — UNSOUND*. A state is re-enterable, so the flag
+  set loses multiplicity and admits non-paths; antisymmetry fails (a preorder,
+  not a partial order), so there is no down-set characterization to project onto.
+  This is the *refutation case*: it is what breaks the picker's view.
+- *(c) right projection*: =current_state= (the single current node) + a
+  *transition-legality* check that every consecutive pair is a legal edge, + any
+  state predicate (lamp: =On ⇔ both switches on=; elevator: doors closed while
+  moving, never skip a requested floor, no reverse with requests the current way).
+- *(d) invariants*: schema gate as in 2.1; *T-legality* (every step is an edge of
+  S — an /illegal transition/); the state predicate; I6 arrival-vs-event-time;
+  unknown-state and duplicate-delivery as schema-level defects.
 
-*Choosing CONCEPT (P1) — frame to the audience's mental model.* Pick the framing
-the audience already carries, not the one nearest the implementation. For ~90% of
-a general (Western) audience the order lifecycle =placed < paid < shipped <
-delivered= is the natural frame; the warehouse-management framing =received <
-picking < picked < packed= is /correct only for a WMS/logistics specialist/. Same
-chain, same structure S — but the wrong frame taxes the candidate on domain, not
-on the problem. Use the specialist frame only when the specialism is what you are
-probing. (This is why the reference README uses picking but §10 and
-=experiments/002= reach for orders.)
+** 2.3. Containment poset / tree — down-sets generalize
 
-* 3. The vocabulary layer (Rosetta)
+- *Instance*: challenge 05 login-hierarchy (leaves =LogOut, Main, Settings,
+  Report1, Report2=; containment =LogIn ⊃ {Main, Settings, Reports}=, =Reports ⊃
+  {Report1, Report2}=; a *tree* = genuine poset), with a /cyclic navigation graph/
+  laid over the tree.
+- *(a) valid projection*: a *flag per ancestor*, downward-closed on the tree — the
+  set of active nodes is an *order ideal* (ancestor-closure: a node's flag implies
+  its parent's). This is the picker's down-set, lifted from a chain to any poset.
+- *(b) wide flags SOUND?*: *yes* (a tree is a DAG; ancestor-sets are valid down-
+  sets), but *not complete on its own*.
+- *(c) right projection*: the ancestor-closed flag set; for completeness add the
+  *one-leaf rule* — =TopDown[state] = {}=, i.e. exactly one active leaf pins the
+  current state.
+- *(d) invariants*: schema gate; ancestor-closure (down-set on the tree); the
+  one-leaf completeness rule; transition-legality on the navigation graph (which
+  is cyclic even though containment is not); I6.
 
-Choose =VOCABULARIES= (P3) by /where the concept is actually documented/, ranked
-by rough prevalence, not by taste. For each, build three lookup tables so the
-interviewer never translates on the fly:
+** 2.4. DAG — branching lifecycle (soundness/completeness theorem)
 
-- *the three artifacts* × vocabulary — what source / derivation / view are called;
-- *the state machine* × vocabulary — who enforces the structure, what the
-  derivation is allowed to do, how you rebuild, and how "same source same view"
-  is phrased;
-- *the defects* × vocabulary — the name each defect has in each framing.
+- *Instances*: the branching variants — a =rolled_back= branch on a deploy chain;
+  any lifecycle that forks. (Named here as the general case between 2.1 and 2.3;
+  the picker README states the theorem, and challenge 05's tree is the acyclic
+  witness.)
+- *(a) valid projection*: a down-set of the DAG (reachable-from-root, topologically
+  consistent).
+- *(b) wide flags SOUND?*: *sound but not complete*. This is the *soundness/
+  completeness theorem*: on a DAG every emitted row is still a valid down-set
+  (soundness holds), but a valid row no longer determines one current state
+  (completeness fails — two branch tips are both valid).
+- *(c) right projection*: the down-set /plus/ an explicit =current_state= column to
+  restore completeness (make the fork observable).
+- *(d) invariants*: schema gate; acyclicity + reachability (the DAG condition);
+  down-set; the completeness caveat asserted as a test; I6.
 
-Include one /order-theoretic/ column even when it is the least common: it reframes
-several rules as a single property (below), which is the strongest thing you can
-hand a candidate who is stuck. Map adjacent-but-non-changing vocabularies once
-and drop them from the probes (in the reference: telemetry, CDC/WAL, bitemporal,
-ledger).
+** 2.5. DFA / finite automaton — the view collapses to accept/reject
 
-* 4. The invariants (deriving the oracle)
+- *Instance*: challenge 06 dfa-even-01 (even #0s and even #1s; states =EE, EO, OE,
+  OO= = parity × parity; complete, cyclic; start & sole accepting state =EE=).
+- *(a) valid projection*: a *single boolean* — =accept/reject= (is the final state
+  accepting?).
+- *(b) wide flags SOUND?*: N/A — the automaton is cyclic, so wide flags are unsound
+  as in 2.2; but the natural view collapses further, to one bit.
+- *(c) right projection*: run the fold to the final state, then test membership in
+  the accepting set. The *fold IS δ\**, the extended transition function — a
+  catamorphism over the free monoid on the alphabet (§1). Completeness is /total/:
+  every string maps to exactly one state.
+- *(d) invariants*: schema gate = alphabet membership (unknown symbols); the fold
+  is total and deterministic; optionally the state trace; I6 if symbols are
+  timestamped.
 
-The invariants are /derived from STRUCTURE S/, not invented. Three tiers, checked
-in order; a row failing an earlier tier is not evaluated by a later one.
+** 2.6. Pushdown / register machine — state is (control, stack)
 
-1. *Schema gate* — domain (cell values in the allowed set), arity (row width =
-   header width), key (identifier unique). Independent of S.
-2. *Structure gate* — the view is a valid element of S. For a chain/poset this is
-   "the set flags form a non-empty down-set (order ideal)": predecessor-closure
-   (I1) and non-emptiness (I2) are /one property/. For a DAG it is "reachable
-   from a root / topologically consistent." Derive this clause from S mechanically.
-3. *The unobservable* — the one property the view forgets and only the source can
-   show. In the reference it is *order/timeliness*: I6 = arrival order agrees with
-   the source's own time (a straggler check), chosen over naive monotonicity
-   because that is what the data actually violates. Every instance has one; name
-   it and prove the view cannot express it.
+- *Instances*: challenge 07 lr-parser-fsm (an LR(0) automaton, states =0..8=,
+  accepting ={0,3,4,8}=, self-loops and back-edges → cyclic, /needs a stack/);
+  challenge 08 register-machine (SICP §5.1 controller over a datapath: GCD is a
+  loop, factorial is a loop + a stack).
+- *(a) valid projection*: for the parser, the *parse outcome* (accept iff at an
+  accepting control state with empty input) + a shift/reduce trace; for the
+  register machine, the *register file at =done=*.
+- *(b) wide flags SOUND?*: *no* — a finite-state view is insufficient. The "state"
+  is =(control state, stack)=; shift pushes, reduce pops. This is *beyond finite-
+  state*: the datapath/stack makes the controller Turing-powerful.
+- *(c) right projection*: fold the token/instruction stream through =(control,
+  stack)=; project the outcome (parse result / final registers). Report stuck or
+  illegal transitions, reads of uninitialized registers, and *stack imbalance*.
+- *(d) invariants*: schema gate; transition-legality on the control automaton;
+  stack balance (pushes/pops reconcile); no read-before-write on registers;
+  termination at an accepting/=done= state.
 
-Pick the *weakest sound oracle* for each: match the check's strength to the
-failure you fear, no stronger. The state machine S is the oracle; the derivation
-and the checker are both /derived from it/, and the checker is negative-tested
-against the broken fixtures.
+** 2.7. Replicated state machine — the unifier
 
-* 5. The defects (injecting the problem)
+- *Instance*: challenge 09 raft-replicated-sm (roles =follower → candidate →
+  leader=, reset to =follower= on higher term; the *replicated log* is the source
+  of truth; each node =apply=s the committed log to derive state).
+- *(a) valid projection*: two folds — (i) the role FSM over election/heartbeat
+  events (a cycle, §2.2); (ii) the *replicated state machine* =apply(committed_log)
+  → state=. The projection of interest: *every replica's derived state agrees*.
+- *(b) wide flags SOUND?*: the role FSM is a cycle (unsound wide flags); the applied
+  state machine is whatever S the application is — the point is not the shape but
+  the *replication*.
+- *(c) right projection*: replicate the *log*, then =apply= it deterministically;
+  two nodes with the same committed log reach the same state. This is §1 made
+  fault-tolerant.
+- *(d) invariants*: log agreement (same committed prefix ⇒ same state — the
+  determinism assertion); role-FSM transition-legality; term monotonicity;
+  commit-before-apply ordering.
+- *Why it unifies*: "a state machine is a deterministic function of its log." Every
+  class above (chain, cycle, poset, DAG, DFA, pushdown, register machine) is a
+  *single-node instance* of what Raft replicates. The whole ladder is one problem;
+  09 is why.
 
-Fixtures carry one defect per invariant plus controls. Classify each defect:
+** 2.8. Taxonomy at a glance
 
-- *rebuild-curable* — an artifact of the broken view or its serializer; a clean
-  fold makes it vanish (in the reference: duplicate, domain junk, arity, and the
-  order symptom).
-- *irreducible* — a bad /fact/ in the source; no rebuild can hide it (the
-  reference's unknown state =pick=). A rebuild that makes it disappear is
-  concealing a defect, not fixing one — state this as a test.
-- *anti-signal* — hand-editing the view to "fix" it. In every vocabulary that is
-  a write bypassing the source; the exercise is partly designed to surface
-  whether a candidate reaches for it.
+| class (§)        | valid projection                 | wide flags sound?      | right projection when not          |
+|------------------+----------------------------------+------------------------+------------------------------------|
+| chain (2.1)      | non-empty down-set               | yes + complete         | (wide flags)                       |
+| cycle/graph (2.2)| current state + T-legality       | *no — unsound*         | current_state + transition check   |
+| poset/tree (2.3) | ancestor-closed set (down-set)   | sound, not complete    | down-set + one-leaf rule           |
+| DAG (2.4)        | down-set of the DAG              | sound, not complete    | down-set + current_state column    |
+| DFA (2.5)        | accept/reject (one bit)          | n/a (cyclic; collapses)| fold = δ*, test accepting set      |
+| pushdown/reg (2.6)| (control, stack) → outcome      | *no — beyond finite*   | fold through (control, stack)      |
+| replicated (2.7) | apply(committed_log); replicas agree | n/a (unifier)      | replicate log, apply deterministically |
 
-* 6. The implementations (polyglot, re-told)
+* 3. The eventing interview dimension
 
-- One =LANGUAGE= per vocabulary (P6), chosen as the one that frames that
-  vocabulary best — /re-tell, not port/. Each teaches what its language does best
-  (a KTable fold, a FIFO consumer, DDL constraints, an aggregate/projector split,
-  a single-writer entity stream, down-sets + permutation properties), not a
-  transliteration of the reference.
-- *Deleted ceremony*: standard library and native run idiom only; no build tool,
-  no third-party deps. Missing tooling is an opportunity (no property-testing lib
-  → exhaustive permutations, which is stronger and hermetic).
-- *The oracle contract* (P7) is the exact stdout every implementation reproduces,
-  with findings sorted as =(id, invariant, detail)= tuples so map-iteration order
-  is irrelevant across languages, and details kept language-neutral.
-- Layout convention: =examples/<tag>-<lang>/run.sh= prints the contract to stdout;
-  =bin/verify.sh= diffs each against =examples/oracle-contract.txt=. Zero findings,
-  no warning tier — a gate is a tripwire, not a promotion mechanism.
+The taxonomy grades the /structure/. This section grades the /eventing/ — event
+sourcing and streaming — because the same log→derivation→view shape is where
+every one of these concepts /bites/. Each probe below names the concept, where it
+bites in the ladder, and what a strong answer looks like. The rubric (§3.2)
+weights the signals, generalizing the picker README's rubric.
+
+** 3.1. The probes (concept → where it bites → strong answer)
+
+| # | concept                          | where it bites                                          | strong answer                                                                 |
+|---+----------------------------------+---------------------------------------------------------+-------------------------------------------------------------------------------|
+| E1 | *log as source of truth*         | all challenges; the wide view is never authoritative     | never repairs the view; always names the upstream log and its row shape       |
+| E2 | *ordering: arrival vs event-time / processing-time* | I6 in every challenge; traffic-light straggler | distinguishes /event time/ from /processing (arrival) time/; I6 is event-time  |
+| E3 | *idempotence & dedup*            | duplicate delivery (picker I5; 02/04 dup event)          | dedup by event key; a re-delivered event must not change the fold's result    |
+| E4 | *replay / reprocessing*          | the whole pattern (§1); rebuild-curable defects vanish   | replay = reprocess = rebuild; same log ⇒ same view (referential transparency) |
+| E5 | *log compaction*                 | chain/DFA (keep last per key vs full history)            | knows compaction is safe only when the fold depends on latest-per-key, not history/order — and that I6 needs history |
+| E6 | *exactly-once vs at-least-once*  | 02/04 duplicate; Raft apply (09)                         | at-least-once + idempotent fold ≈ effectively-once; true exactly-once needs dedup at the sink |
+| E7 | *CQRS: aggregate-validates vs projector-reports* | who rejects an illegal transition | the /aggregate/ (write side) rejects illegal transitions; the /projector/ (read side) only reports anomalies — it must not silently repair |
+| E8 | *event-carried state*            | fat vs thin events; register writes (08); AppendEntries (09) | events carry enough state to fold without external lookups; contrast thin notification events |
+| E9 | *backpressure / straggler / late arrival* | I6; elevator request bursts; Raft heartbeat timeout | late/straggling events are an ordering fact to surface (I6), not to reorder away; backpressure is a consumer-side concern, not a data defect |
+| E10 | *replication / determinism*     | Raft (09); every single-node class is a replica-of-one   | same committed log ⇒ same state on every replica; the fold must be deterministic (no wall-clock, no map-iteration order in output) |
+
+** 3.2. Interviewer rubric (signals, weights)
+
+Generalizes the picker README's rubric to the whole ladder. Signals are what to
+listen for; weight is how much it moves the needle.
+
+| signal                                                                    | weight | class / concept |
+|---------------------------------------------------------------------------+--------+-----------------|
+| separates schema failures from structure failures, unprompted             | high   | any             |
+| picks the /right projection/ for the class (not wide flags by reflex)      | high   | 2.2–2.7         |
+| says the wide-flag view is unsound for a cycle/reversible graph, and why   | high   | 2.2             |
+| states valid rows = down-sets, and lifts it from chain to poset/tree/DAG   | high   | 2.1/2.3/2.4     |
+| says ordering (event-time) is unobservable in the view, unprompted         | high   | E2              |
+| names the upstream log and gives its row shape                             | high   | E1              |
+| leaves the irreducible defect broken after rebuild and says why            | high   | E4              |
+| the projector /reports/ and the aggregate /validates/ — does not repair    | high   | E7              |
+| gives the DAG soundness-but-not-completeness theorem                       | medium | 2.4             |
+| adds current_state / anomaly columns to restore completeness               | medium | 2.4/2.2         |
+| dedups by event key; a redelivery does not change the fold                 | medium | E3/E6           |
+| distinguishes exactly-once from at-least-once + idempotent                 | medium | E6              |
+| writes the fold as δ* / catamorphism over the free monoid                  | medium | 2.5/§1          |
+| recognizes (control, stack) is beyond finite-state                         | medium | 2.6             |
+| checks stack balance / no read-before-write                                | medium | 2.6             |
+| states "same committed log ⇒ same state" as determinism                    | medium | 2.7/E10         |
+| reasons about when compaction is safe (latest-per-key vs history)          | medium | E5              |
+| treats late arrival as a fact to surface, not to reorder away              | medium | E9              |
+| negative-tests the checker against the broken fixtures                     | medium | any             |
+| follows a deliberate structure-class switch by the interviewer             | medium | transfer        |
+
+*Anti-signal (all classes)*: hand-editing the view to "fix" it. In every
+vocabulary this is a write that bypasses the log (ES: data not on events; DD:
+integrity violation; EM: single-writer violation; MQ: out-of-band write; RA:
+bypassing the view definition; OT: a row not in the image of the fold). Surfacing
+whether a candidate reaches for it is part of the exercise's design.
+
+* 4. Challenge → structure class + eventing concepts
+
+Each ladder challenge, its structure class (§2), and the eventing concepts (§3.1)
+it best probes.
+
+| # | challenge          | structure class (§)       | eventing concepts probed        |
+|---+--------------------+---------------------------+---------------------------------|
+| 1 | order-lifecycle    | chain (2.1)               | E1 E2 E3 E4 E7                   |
+| 2 | traffic-light      | cycle (2.2)               | E2 E3 E6 E9 (refutation of wide) |
+| 3 | elevator           | product automaton (2.2)   | E8 E9 (state explosion; requests)|
+| 4 | lamp-two-switch    | reversible graph (2.2)    | E3 E6 (dedup; idempotent toggle) |
+| 5 | login-hierarchy    | containment poset (2.3)   | E4 E7 (down-set lift; report vs validate) |
+| 6 | dfa-even-01        | DFA (2.5)                 | E4 E5 (δ*; compaction of history)|
+| 7 | lr-parser-fsm      | pushdown (2.6)            | E8 (event-carried; stack state)  |
+| 8 | register-machine   | register machine (2.6)    | E8 E4 (register writes; replay)  |
+| 9 | raft-replicated-sm | replicated SM (2.7)       | E6 E8 E10 (exactly-once; replication; determinism) |
+
+* 5. Interview flow
+
+What to hand the candidate, and when to switch structure class to test transfer.
+
+1. *Open on the chain (01 / the picker).* Hand the broken wide-flag view and the
+   log. The candidate should separate schema from structure defects, name the log,
+   say ordering is unobservable, and leave the irreducible defect broken after
+   rebuild. This establishes the shared vocabulary (§1).
+2. *Switch to a cycle (02 traffic-light) to test transfer.* The wide-flag view is
+   now *unsound*. The signal is whether the candidate /notices/ and reaches for
+   =current_state= + transition-legality instead of forcing flags. This is the
+   pivot the whole taxonomy is built to expose.
+3. *Lift to a poset (05 login-hierarchy).* Down-sets generalize from the chain:
+   ancestor-closure. Watch for the one-leaf completeness rule.
+4. *Introduce branching (DAG, §2.4).* Elicit the soundness-but-not-completeness
+   theorem; a strong candidate adds a =current_state= column unprompted.
+5. *Collapse to a bit (06 DFA).* The view is accept/reject; the fold is δ*. Probe
+   compaction (E5): what can you throw away and still recompute the answer?
+6. *Go beyond finite-state (07 / 08).* The state is =(control, stack)=. Probe
+   stack balance and event-carried state (E8).
+7. *Close on replication (09 Raft).* Same committed log ⇒ same state. This retells
+   every earlier challenge as a single-node instance of a replicated machine.
+
+Switch vocabulary (KS/MQ/RA/ES/DD/EM/OT) at any step to test whether the
+candidate's model survives re-framing; following a deliberate switch is a rubric
+signal (§3.2). A candidate who holds several models shallowly is a stronger signal
+than one who holds one deeply.
+
+* 6. Acceptance — what "done" means for this spec
+
+- §1 core pattern kept verbatim from the picker (source→derivation→view; fold =
+  catamorphism over the free monoid; replay = reprocess = rebuild).
+- §2 taxonomy covers chain, cycle/reversible graph, containment poset/tree, DAG,
+  DFA, pushdown/register machine, replicated SM — each with (a) valid projection,
+  (b) wide-flag soundness verdict, (c) the right projection when unsound, (d)
+  invariants; and the soundness/completeness theorem is stated (§2.4).
+- §3 eventing interview: probes E1–E10 each tied to where they bite, and an
+  interviewer rubric with weighted signals + the anti-signal.
+- §4 maps every challenge 01–09 to a structure class /and/ the eventing concepts.
+- §5 interview flow: what to hand the candidate, when to switch structure class /
+  vocabulary to test transfer.
+- Versioned 2.0.0, Status block present, Seals ledger + Changelog updated, sealed
+  by annotated tag =spec-v2.0.0= recording =sha256(spec.org)=.
+- =README.org= spec badge reads v2.0.0.
 
 * 7. Methodology inherited
 
-This spec assumes the operating disciplines in [[./.meta/methodology.org][=.meta/methodology.org=]] and the
-terms in [[./.meta/vocabulary.org][=.meta/vocabulary.org=]] (themselves specialized from
-=gentle-symbolic-computation/.meta=). The load-bearing ones for /building/ an
-instance: spec-governs; oracle-first and verify-the-verifier; run-it-before-
-believing-it; one editable representation (shared fixtures); EDD for anything
-speculative (an =experiments/NNN-slug/= with a falsifiable hypothesis); PCP
+This spec assumes the operating disciplines in [[./.meta/methodology.org][=.meta/methodology.org=]] and the terms
+in [[./.meta/vocabulary.org][=.meta/vocabulary.org=]]. The load-bearing ones: spec-governs (this file is
+authoritative for the taxonomy and the grading); oracle-first and verify-the-
+verifier (each solved challenge pins a byte-exact =examples/oracle-contract.txt=
+and negative-tests its checker); run-it-before-believing-it; one editable
+representation (shared fixtures under each challenge's =data/=); EDD for anything
+speculative (=experiments/NNN-slug/= with a falsifiable hypothesis); PCP
 (conventional commits, one step, git notes on spec/oracle/harness changes);
-declared deviations while establishing. A run that refutes this spec /amends/ it
-(the reference's =experiments/001= is the worked example: it changed the oracle).
-
-* 8. Construction recipe (the order of moves)
-
-The sequence that actually worked, and the order to repeat:
-
-1. *Survey* the target dir; do not assume.
-2. *Write the spec* — the exercise doc / README (the candidate-facing Part 1 and
-   the interviewer's Rosetta). Fill §2 parameters.
-3. *Tangle the fixtures* — the shared source and broken view; inject P5 defects
-   with controls. These are the single source of truth; never copy them into
-   examples.
-4. *Build the reference implementation* in the most neutral language and *run it*
-   — its output /is/ the oracle. Running here is what catches the spec's own
-   errors (it did: the I6 gap and the double-flag).
-5. *Pin the oracle contract* and write =bin/verify.sh=; *negative-test the
-   harness* (feed it garbage, watch it reject) and prove PASS on the reference.
-6. *Fan out the remaining languages* — independent, parallelizable; each reads the
-   shared fixtures, reproduces the contract, and self-gates with =verify.sh=.
-   Re-verify centrally; do not trust self-reports.
-7. *Reconcile the spec* with what the runs observed (amend README/tables; record
-   the decision in =experiments/=).
-8. *Repo furniture* — =.meta/=, =CLAUDE.md=, house-style README header + badges +
-   topics + description, this =spec.org=. Coordinate with =aq= if other workers
-   share the tree.
-
-* 9. Reference instantiation — picker-state-projection
-
-The §2 fill for this repo (see =README.org= for the full Rosetta):
-
-| param        | value |
-|--------------+-------|
-| =CONCEPT=    | warehouse item lifecycle; source = =item_trace.csv= (log), derivation = =fold= (projector), view = =item_state_flags.csv= (wide flags) |
-| =STRUCTURE S=| chain =received < picking < picked < packed= (a total order) |
-| =VOCABULARIES=| KS Kafka, MQ cloud messaging, RA relational, ES event sourcing, DD derived data, EM microservices, OT order theory |
-| =INVARIANTS= | schema: I3 domain, I4 arity, I5 key; structure: I1 predecessor-closure + I2 non-empty = down-set; unobservable: I6 arrival vs event-time |
-| =DEFECTS=    | ITM-02 unknown state (irreducible), ITM-03 out-of-order delivery, ITM-04 null ts, ITM-05/06 domain, ITM-07/08 arity, ITM-01 duplicate; ITM-09/10 controls |
-| =LANGUAGES=  | Scala, TypeScript, SQL, Elixir, Python(ref), Go, Haskell |
-| =ORACLE=     | =examples/oracle-contract.txt= (PASS=7 via =bin/verify.sh=) |
-
-* 10. Proof of generality — two more fills
-
-To show the recipe is not event-specific, the §2 table filled for one
-event-focused problem and one that is not.
-
-** 10a. Event-focused: deployment ledger
-
-| param        | value |
-|--------------+-------|
-| =CONCEPT=    | deployment lifecycle; source = deploy event log, derivation = fold, view = per-service status board |
-| =STRUCTURE S=| chain =requested < building < deployed < verified= (or a small DAG with a =rolled_back= branch) |
-| =VOCABULARIES=| DORA/CD, GitOps, event sourcing, CDC/WAL, state machines, order theory |
-| =INVARIANTS= | schema: status ∈ domain, one row per (service,env), unique deploy id; structure: no =deployed= without =building= (down-set); unobservable: wall-clock order of deploys vs recorded commit order |
-| =DEFECTS=    | a status typo (irreducible), a rollback recorded before the deploy (order), a null timestamp, a duplicate webhook delivery, an out-of-domain env |
-| =LANGUAGES=  | (reuse the map; e.g. Clojure/babashka for GitOps, SQL for CDC, Elixir for ES, Haskell for OT) |
-| =ORACLE=     | same shape: sorted =(service, invariant, detail)= findings, byte-exact |
-
-Branching (=rolled_back=) exercises the /soundness vs completeness/ theorem from
-=README.org= Part 5: a DAG stays sound (valid rows = down-sets) but loses
-completeness (a valid row no longer determines one current status).
-
-** 10b. Not event-focused: spreadsheet / dataflow recalculation
-
-| param        | value |
-|--------------+-------|
-| =CONCEPT=    | a spreadsheet; source = the cells-with-formulas (the sheet), derivation = topological recalculation (the fold), view = the computed values grid |
-| =STRUCTURE S=| the dependency *DAG* over cells (a poset, not a chain) |
-| =VOCABULARIES=| reactive/dataflow (Rx), build systems (Make/Bazel), incremental computation, dependency resolution, functional (lazy eval), order theory |
-| =INVARIANTS= | schema: a referenced cell exists, formula arity, unique cell id; structure: *no cycle* (the DAG condition) and every value derives only from its declared inputs; unobservable: the recomputation /order/ (a value grid cannot show what depended on what) |
-| =DEFECTS=    | a formula referencing a missing cell (irreducible), a circular reference (structure), a stale cached value the recompute overwrites (rebuild-curable), a value hand-typed over a formula cell (anti-signal), a type-domain violation |
-| =LANGUAGES=  | e.g. TypeScript (Rx/reactive), a Makefile (build systems), Haskell (lazy eval + DAG), SQL recursive CTE (reachability), Racket/Scheme (incremental), Rust (dependency graph) |
-| =ORACLE=     | same shape: sorted =(cell, invariant, detail)=; the anti-signal (typed-over formula) is the exact analog of hand-editing the projection |
-
-Here "no cycle" replaces "down-set": for a general DAG the structure gate is
-acyclicity + reachability; the /unobservable/ shifts from time to /recomputation
-order/. The FP framing survives verbatim: recalc is a pure function of the sheet,
-so "same sheet, same values" is again referential transparency.
-
-* 11. Acceptance — what "done" means for an instantiation
-
-- §2 parameters filled; each invariant has a violating fixture row and a control.
-- A reference implementation exists and was /run/; its output is pinned as the
-  oracle contract.
-- =bin/verify.sh= exists, is negative-tested, and reports PASS for every language.
-- Defects are classified (rebuild-curable / irreducible / anti-signal) and the
-  irreducible one is asserted to survive rebuild.
-- =README.org= carries the Rosetta (three-artifacts, state-machine, defects,
-  invariants × vocabularies) and matches the observed oracle.
-- =.meta/=, =CLAUDE.md=, description, topics present; house style matched.
-- Any spec-refuting run recorded under =experiments/NNN/= and reconciled here.
-
-* 12. Bootstrapping — =bin/new-exercise=
-
-=bin/new-exercise= stamps a skeleton from the §2 parameters so a new instance
-starts at step 2 of the §8 recipe, not step 0. It *copies the problem-independent
-machinery verbatim* — the generic gate =bin/verify.sh= (it only needs
-=examples/*/run.sh= and =examples/oracle-contract.txt=, nothing problem-specific),
-=spec.org=, and the two =.meta/= discipline files — and *templates the
-problem-specific files*: a house-style =README.org= with the §2 parameter table
-pre-filled, a =CLAUDE.md= stub, the =data/ examples/ experiments/= layout, a
-=.gitignore=, and an oracle-contract placeholder to pin from the reference run.
-
-#+begin_example
-bin/new-exercise -d <target-dir> [-n <name>] \
-  [--concept "..."] [--structure "..."] [--vocab "a,b,c"] [--languages "x,y,z"] [--force]
-#+end_example
-
-What it does /not/ do (by design — these are the thinking, not the ceremony):
-choose the vocabularies, derive the invariants from S, inject the defects, write
-Part 1, or pin the oracle. Those are §§3–5 and §8.2–8.5. The bootstrapper removes
-the boilerplate so the author spends effort on the exercise, not the scaffold.
-A worked run is recorded in =experiments/002= (a four-step linear-process
-instance stamped, completed, and gated to PASS).
+re-tell-not-port (each language example teaches what it frames best). A run that
+refutes this spec /amends/ it. To stamp a new challenge from a structure class,
+=bin/new-exercise= copies the problem-independent machinery and templates the
+problem-specific files (the picker generator's §12, retained as tooling).
 
 * Seals
 
 Each row is frozen by an annotated git tag; the tag message records
 =sha256(spec.org)= of the committed blob. Verify any seal with
-=git show <tag>:spec.org | sha256=.
+=git show <tag>:spec.org | sha256sum=.
 
 | version | date       | tag           | seals |
 |---------+------------+---------------+-------|
-| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | the generator + =bin/new-exercise= bootstrapper; P1 audience-framing rule |
+| 2.0.0   | 2026-09-10 | =spec-v2.0.0= | generalization to the state-machine + eventing interview: §1 core pattern verbatim; §2 structure taxonomy (chain→replicated SM) with soundness/completeness; §3 eventing probes E1–E10 + rubric; §4 challenge map; §5 interview flow |
+| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded — copied picker generator) the source→derivation→view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
 
 * Changelog
 
-- =1.1.0= (2026-09-10) — add §12 and =bin/new-exercise=, the parameter-driven
-  skeleton bootstrapper; worked run in =experiments/002=; add the P1
-  audience-framing rule (§2) — frame CONCEPT to the audience's mental model
-  (orders for general audiences, WMS picking only for specialists).
-- =1.0.0= (2026-09-10) — initial. Extracted the construction method from the
-  built picker-state-projection (=README.org=, =.meta/=, =examples/=,
-  =experiments/001=) into a reusable, parameterized generator; added two
-  proof-of-generality fills (deployment ledger; spreadsheet recalculation).
+- =2.0.0= (2026-09-10) — *major generalization*. Rewrote the copied picker
+  generator (v1.1.0) into the generic *state-machine + eventing interview* spec
+  that grades the whole ladder. Kept the core source→derivation→view pattern
+  verbatim (§1). Added the *structure taxonomy* (§2): chain, cycle/reversible
+  graph, containment poset/tree, DAG, DFA, pushdown/register machine, replicated
+  state machine — each with valid projection, wide-flag soundness verdict, right
+  projection, and invariants, plus the soundness/completeness theorem. Added the
+  *eventing interview dimension* (§3): probes E1–E10 (log-as-truth, event-time vs
+  processing-time, idempotence/dedup, replay, compaction, exactly-once vs
+  at-least-once, CQRS aggregate-validates vs projector-reports, event-carried
+  state, backpressure/straggler/late-arrival, replication/determinism) and a
+  weighted interviewer rubric with the anti-signal. Added the challenge→class+
+  concept map (§4), the interview flow with structure-class/vocabulary switches
+  (§5), acceptance criteria for the spec itself (§6). The picker is now the
+  reference /chain/ instance rather than the whole story.
+- =1.1.0= (2026-09-10) — (as copied from picker-state-projection) the
+  parameter-driven generator + =bin/new-exercise= bootstrapper; the P1 audience-
+  framing rule. Scoped mostly to the simple linear chain. Superseded by 2.0.0.

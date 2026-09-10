@@ -7,7 +7,7 @@
 
 [[./bin/verify.sh][https://img.shields.io/badge/reference-1%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
-[[./spec.org][https://img.shields.io/badge/spec-v1.1.0-blue.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v2.0.0-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
 [[./README.org][https://img.shields.io/badge/cell-FreeBSD_amd64-orange.svg]]
 
