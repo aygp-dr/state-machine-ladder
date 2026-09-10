@@ -1,0 +1,16 @@
+== broken projection ==
+ORD-01 I5 duplicate
+ORD-02 I1 shipped without paid
+ORD-03 I1 delivered without shipped
+ORD-04 I1 paid without placed
+ORD-04 I2 no placed
+ORD-05 I3 0
+ORD-06 I3 yes
+ORD-07 I4 arity 4
+ORD-08 I4 arity 6
+== trace anomalies ==
+ORD-02 unknown_state pay
+ORD-03 I6 delivered before shipped
+ORD-04 null_ts placed
+== rebuilt projection ==
+ORD-02 I1 shipped without paid

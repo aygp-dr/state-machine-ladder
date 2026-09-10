@@ -1,0 +1,40 @@
+#+TITLE: order-lifecycle
+#+SUBTITLE: TODO one line — one problem, N vocabularies, N languages
+#+AUTHOR: Aidan Pace
+#+OPTIONS: toc:2 num:nil ^:nil
+#+PROPERTY: header-args :mkdirp t
+#+STARTUP: overview
+
+[[./bin/verify.sh][https://img.shields.io/badge/verify-0%2F0_pending-lightgrey.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v1.1.0-blue.svg]]
+[[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
+
+TODO lead paragraph. Instantiated from [[./spec.org][=spec.org=]]; fill the parameter
+table below, then follow spec §8.
+
+* Parameters (spec.org §2)
+
+| param        | value |
+|--------------+-------|
+| =CONCEPT=    | e-commerce order; source=order_trace.csv (log), derivation=fold, view=order_state_flags.csv (wide flags) |
+| =STRUCTURE S=| chain placed < paid < shipped < delivered (a total order) |
+| =VOCABULARIES=| event-sourcing,cloud-messaging,relational,derived-data,microservices,order-theory |
+| =INVARIANTS= | TODO: schema (domain/arity/key) + structure (from S) + one unobservable |
+| =DEFECTS=    | TODO: one per invariant + controls; classify (rebuild-curable/irreducible/anti-signal) |
+| =LANGUAGES=  | elixir,typescript,sql,python,go,haskell |
+| =ORACLE=     | =examples/oracle-contract.txt= (pin from the reference run) |
+
+* Vocabularies
+
+- event-sourcing
+- cloud-messaging
+- relational
+- derived-data
+- microservices
+- order-theory
+
+* How to use this document
+
+TODO: Part 1 (candidate-facing broken view), Part 2 (backtrack to source),
+Part 3 (rebuild), Part 4 (corrected view), Part 5 (refutation condition),
+Rubric. See the reference exercise for the shape.

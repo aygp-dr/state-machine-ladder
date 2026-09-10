@@ -1,0 +1,22 @@
+#+TITLE: 05 — web-app login (hierarchical statechart)
+#+STARTUP: showall
+* Difficulty
+4 / 8 — a containment poset (tree) with cyclic navigation.
+* Provenance
+learntla.com, /State Machines/ (hierarchical section).
+* The machine
+- Leaves: =LogOut=, =Main=, =Settings=, =Report1=, =Report2=.
+- Hierarchy: =LogIn ⊃ {Main, Settings, Reports}=, =Reports ⊃ {Report1, Report2}=.
+- Navigation (cyclic): =Main↔Settings=, =Report1↔Report2=, =LogIn→LogOut=,
+  =LogOut→Main=, =Reports→Main=.
+- Structure S: the *containment hierarchy is a tree — a genuine poset* (distinct
+  from the linear chain); the transition graph on top of it has cycles.
+* What to implement
+Fold a navigation log into the current leaf; the projection may keep a *flag per
+ancestor* — and here the down-set characterization DOES hold on the tree: a
+node's flag implies its parent's (ancestor-closure). Completeness needs
+=TopDown[state] = {}= — exactly one leaf.
+* The lesson
+Down-sets generalize from a chain to any poset: valid ancestor-sets are order
+ideals of the tree. Soundness holds (tree = DAG); completeness needs the
+one-leaf rule (spec §5 on a tree).

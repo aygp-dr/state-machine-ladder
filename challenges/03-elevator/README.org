@@ -1,0 +1,21 @@
+#+TITLE: 03 — elevator
+#+STARTUP: showall
+* Difficulty
+4 / 8 — a product state space with a pending-request set.
+* The machine
+- State = =floor ∈ 1..N= × =direction ∈ {up,down,idle}= × =doors ∈ {open,closed}=
+  × a set of outstanding =requests=.
+- Transitions: request arrives; move one floor in =direction=; open/close doors;
+  flip direction when no further requests that way.
+- Structure S: a large *product* automaton; reachable subspace constrained by
+  invariants (not a chain, not acyclic).
+* What to implement
+Fold a call/press/arrival log into current =(floor, direction, doors)= and the
+outstanding request set; report violations.
+* Invariants
+- doors =closed= whenever moving; never skip a requested floor in the current
+  direction; do not reverse while requests remain the current way; never a floor
+  outside =1..N=.
+* Acceptance
+Reproduce a pinned oracle (current state + anomalies). Expect state explosion —
+model the reachable subspace, not the full product.

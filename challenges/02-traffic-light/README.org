@@ -1,0 +1,26 @@
+#+TITLE: 02 — traffic light
+#+STARTUP: showall
+* Difficulty
+2 / 8 — a small deterministic cycle.
+* Provenance
+Classic FSM; TLA+ model is tiny. (Chelsea Troy, /Raft, Threads, Processes, and State Machines/.)
+* The machine
+- States: =red=, =green=, =yellow= (a 3-cycle).
+- Transitions (the only legal ones): =red→green=, =green→yellow=, =yellow→red=.
+- Structure S: a *cycle* — NOT a poset. This is the refutation case (spec §5).
+* What to implement
+Fold a per-signal log =(signal_id, state, ts)= (arrival order) into the *current
+state* and a list of anomalies. Because S has a cycle there is *no sound
+wide-flag projection* — the view is =current_state ∈ {red,green,yellow}=, not a
+set of flags. Report: unknown_state, null_ts, duplicate delivery, an *illegal
+transition* (T2: a step not in the cycle), and I6 (a delivered event whose ts is
+earlier than one already seen).
+* Acceptance
+Reproduce =examples/oracle-contract.txt= (two sections: =anomalies=,
+=current state=; findings sorted). Build the reference with =bin/new-exercise=
+and pin the oracle from a real run (spec §8).
+* The lesson
+A cyclic machine breaks the down-set projection: a state is re-enterable, so
+flags lose multiplicity and admit non-paths. The right projection is the current
+state plus a transition-legality check — exactly why picking the projection is
+part of the problem.

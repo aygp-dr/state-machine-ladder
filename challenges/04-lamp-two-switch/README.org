@@ -1,0 +1,19 @@
+#+TITLE: 04 — two-switch lamp
+#+STARTUP: showall
+* Difficulty
+3 / 8 — nondeterministic, strongly connected.
+* Provenance
+learntla.com, /State Machines/.
+* The machine
+- State = =(wall, lamp) ∈ {off,on}²=: =BothOff, WallOff, LampOff, On=. The lamp
+  is lit iff both switches are on (=On=).
+- Transitions: toggling one switch flips one coordinate — every state has two
+  outgoing edges; all reversible. Strongly connected.
+- Structure S: the Boolean lattice ={0,1}²= as a *reversible graph* (a preorder,
+  antisymmetry fails) — again no sound flag projection.
+* What to implement
+Fold a switch-toggle log into current state; report illegal toggles (a step that
+changes ≠1 coordinate), unknown states, and out-of-order delivery.
+* The lesson
+Nondeterminism + reversibility: the interesting invariant is =On ⇔ both on=, and
+the view must be the current lattice point, not a monotone flag set.

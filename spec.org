@@ -1,0 +1,309 @@
+#+TITLE: spec — the concept-exercise generator
+#+SUBTITLE: How picker-state-projection was built, generalized to rebuild it for any source→derivation→view problem
+#+AUTHOR: Aidan Pace
+#+OPTIONS: toc:2 num:t ^:nil
+#+STARTUP: overview
+
+* Status
+
+- Version: =1.1.0=
+- Status: SEALED at v1.1.0 — frozen; any change requires a new version + re-seal
+- Date: 2026-09-10
+- Supersedes: =1.0.0= (adds §12, the =bin/new-exercise= bootstrapper)
+- Seal: each version is frozen by an annotated git tag =spec-vX.Y.Z= whose message
+  records =sha256(spec.org)= of the committed blob (verify:
+  =git show spec-vX.Y.Z:spec.org | sha256=). See §Seals for the ledger.
+- Governs: this repo is /one instantiation/ of this spec; =README.org= is the
+  instantiated exercise, this file is the recipe that produces such exercises.
+
+This spec is a *generator*, not a description. It states the reusable shape,
+the parameters to fill, and the order of moves — so an agent or human can
+rebuild an exercise of this kind for a different problem (event-focused or
+otherwise) without re-deriving the method. Where it and =README.org= disagree
+about /this/ repo, =README.org= wins; where they disagree about /how to build a
+new one/, this file wins.
+
+* 0. What kind of thing we build
+
+A *concept-exercise*: a single small problem that is (a) worth thinking about in
+more than one professional vocabulary, (b) implementable once per vocabulary in
+the language that frames it best, and (c) gated by one byte-exact oracle so the
+whole thing cannot rot. picker-state-projection is the reference instance:
+"a wide state-flag projection is broken; prove what you can, backtrack to the
+log, rebuild it."
+
+The exercise is used for interviewing, teaching, and as a polyglot Rosetta —
+but the /construction method/ is the transferable asset, and it is what this
+spec captures.
+
+* 1. The pattern (the abstract shape)
+
+Every instantiation is the same three artifacts and one claim.
+
+| role              | what it is                                        | property                    |
+|-------------------+---------------------------------------------------+-----------------------------|
+| *source of truth* | append-only record, ordered, one row per fact     | the only thing you may trust |
+| *derivation*      | a /pure function/ source → view                    | replay = reprocess = rebuild |
+| *view*            | a lossy, convenient projection of the source       | derived; never authoritative |
+
+The claim the exercise turns on: *the view is broken, and only some defects
+survive a clean rebuild.* Classifying which is the whole game. The deep FP
+statement (portable to any instance): the derivation is a *catamorphism over the
+free monoid on the source*, so "same source, same view" is referential
+transparency, not something you enforce.
+
+Why this generalizes past events: any domain with a /source you may edit/ and a
+/view you must not/ has this shape — event logs and read models, but equally
+formula cells and recomputed values, dependency declarations and build order,
+grant records and effective-permission matrices. If you can name the source, the
+pure derivation, and the view, you can instantiate.
+
+* 2. Parameters (fill these to instantiate)
+
+The entire exercise is determined by filling this table. §9 fills it for the
+reference; §10 fills it twice more.
+
+| # | parameter        | meaning                                                            |
+|---+------------------+-------------------------------------------------------------------|
+| P1 | =CONCEPT=        | the one-line problem and its source / derivation / view names      |
+| P2 | =STRUCTURE S=    | the order/graph the view encodes (chain, poset, DAG, lattice…)     |
+| P3 | =VOCABULARIES=   | N practitioner framings, ranked by documentation prevalence        |
+| P4 | =INVARIANTS=     | the schema gate + the structure gate + the one unobservable prop.  |
+| P5 | =DEFECTS=        | one deliberate defect per invariant, injected into the fixtures    |
+| P6 | =LANGUAGES=      | one per vocabulary, the one that frames it best                     |
+| P7 | =ORACLE=         | the byte-exact output every implementation must reproduce          |
+
+Two rules that make the fill sound:
+
+1. *One defect per invariant, and a control.* Every invariant must have at least
+   one fixture row that violates it and at least one clean row, so each check is
+   negative- and positive-tested by construction.
+2. *Split the defects by provenance.* Some live in the source and survive any
+   rebuild; the rest live in the derivation/serializer and vanish on a clean
+   rebuild. That split is the point of the "backtrack to the log" step.
+
+*Choosing CONCEPT (P1) — frame to the audience's mental model.* Pick the framing
+the audience already carries, not the one nearest the implementation. For ~90% of
+a general (Western) audience the order lifecycle =placed < paid < shipped <
+delivered= is the natural frame; the warehouse-management framing =received <
+picking < picked < packed= is /correct only for a WMS/logistics specialist/. Same
+chain, same structure S — but the wrong frame taxes the candidate on domain, not
+on the problem. Use the specialist frame only when the specialism is what you are
+probing. (This is why the reference README uses picking but §10 and
+=experiments/002= reach for orders.)
+
+* 3. The vocabulary layer (Rosetta)
+
+Choose =VOCABULARIES= (P3) by /where the concept is actually documented/, ranked
+by rough prevalence, not by taste. For each, build three lookup tables so the
+interviewer never translates on the fly:
+
+- *the three artifacts* × vocabulary — what source / derivation / view are called;
+- *the state machine* × vocabulary — who enforces the structure, what the
+  derivation is allowed to do, how you rebuild, and how "same source same view"
+  is phrased;
+- *the defects* × vocabulary — the name each defect has in each framing.
+
+Include one /order-theoretic/ column even when it is the least common: it reframes
+several rules as a single property (below), which is the strongest thing you can
+hand a candidate who is stuck. Map adjacent-but-non-changing vocabularies once
+and drop them from the probes (in the reference: telemetry, CDC/WAL, bitemporal,
+ledger).
+
+* 4. The invariants (deriving the oracle)
+
+The invariants are /derived from STRUCTURE S/, not invented. Three tiers, checked
+in order; a row failing an earlier tier is not evaluated by a later one.
+
+1. *Schema gate* — domain (cell values in the allowed set), arity (row width =
+   header width), key (identifier unique). Independent of S.
+2. *Structure gate* — the view is a valid element of S. For a chain/poset this is
+   "the set flags form a non-empty down-set (order ideal)": predecessor-closure
+   (I1) and non-emptiness (I2) are /one property/. For a DAG it is "reachable
+   from a root / topologically consistent." Derive this clause from S mechanically.
+3. *The unobservable* — the one property the view forgets and only the source can
+   show. In the reference it is *order/timeliness*: I6 = arrival order agrees with
+   the source's own time (a straggler check), chosen over naive monotonicity
+   because that is what the data actually violates. Every instance has one; name
+   it and prove the view cannot express it.
+
+Pick the *weakest sound oracle* for each: match the check's strength to the
+failure you fear, no stronger. The state machine S is the oracle; the derivation
+and the checker are both /derived from it/, and the checker is negative-tested
+against the broken fixtures.
+
+* 5. The defects (injecting the problem)
+
+Fixtures carry one defect per invariant plus controls. Classify each defect:
+
+- *rebuild-curable* — an artifact of the broken view or its serializer; a clean
+  fold makes it vanish (in the reference: duplicate, domain junk, arity, and the
+  order symptom).
+- *irreducible* — a bad /fact/ in the source; no rebuild can hide it (the
+  reference's unknown state =pick=). A rebuild that makes it disappear is
+  concealing a defect, not fixing one — state this as a test.
+- *anti-signal* — hand-editing the view to "fix" it. In every vocabulary that is
+  a write bypassing the source; the exercise is partly designed to surface
+  whether a candidate reaches for it.
+
+* 6. The implementations (polyglot, re-told)
+
+- One =LANGUAGE= per vocabulary (P6), chosen as the one that frames that
+  vocabulary best — /re-tell, not port/. Each teaches what its language does best
+  (a KTable fold, a FIFO consumer, DDL constraints, an aggregate/projector split,
+  a single-writer entity stream, down-sets + permutation properties), not a
+  transliteration of the reference.
+- *Deleted ceremony*: standard library and native run idiom only; no build tool,
+  no third-party deps. Missing tooling is an opportunity (no property-testing lib
+  → exhaustive permutations, which is stronger and hermetic).
+- *The oracle contract* (P7) is the exact stdout every implementation reproduces,
+  with findings sorted as =(id, invariant, detail)= tuples so map-iteration order
+  is irrelevant across languages, and details kept language-neutral.
+- Layout convention: =examples/<tag>-<lang>/run.sh= prints the contract to stdout;
+  =bin/verify.sh= diffs each against =examples/oracle-contract.txt=. Zero findings,
+  no warning tier — a gate is a tripwire, not a promotion mechanism.
+
+* 7. Methodology inherited
+
+This spec assumes the operating disciplines in [[./.meta/methodology.org][=.meta/methodology.org=]] and the
+terms in [[./.meta/vocabulary.org][=.meta/vocabulary.org=]] (themselves specialized from
+=gentle-symbolic-computation/.meta=). The load-bearing ones for /building/ an
+instance: spec-governs; oracle-first and verify-the-verifier; run-it-before-
+believing-it; one editable representation (shared fixtures); EDD for anything
+speculative (an =experiments/NNN-slug/= with a falsifiable hypothesis); PCP
+(conventional commits, one step, git notes on spec/oracle/harness changes);
+declared deviations while establishing. A run that refutes this spec /amends/ it
+(the reference's =experiments/001= is the worked example: it changed the oracle).
+
+* 8. Construction recipe (the order of moves)
+
+The sequence that actually worked, and the order to repeat:
+
+1. *Survey* the target dir; do not assume.
+2. *Write the spec* — the exercise doc / README (the candidate-facing Part 1 and
+   the interviewer's Rosetta). Fill §2 parameters.
+3. *Tangle the fixtures* — the shared source and broken view; inject P5 defects
+   with controls. These are the single source of truth; never copy them into
+   examples.
+4. *Build the reference implementation* in the most neutral language and *run it*
+   — its output /is/ the oracle. Running here is what catches the spec's own
+   errors (it did: the I6 gap and the double-flag).
+5. *Pin the oracle contract* and write =bin/verify.sh=; *negative-test the
+   harness* (feed it garbage, watch it reject) and prove PASS on the reference.
+6. *Fan out the remaining languages* — independent, parallelizable; each reads the
+   shared fixtures, reproduces the contract, and self-gates with =verify.sh=.
+   Re-verify centrally; do not trust self-reports.
+7. *Reconcile the spec* with what the runs observed (amend README/tables; record
+   the decision in =experiments/=).
+8. *Repo furniture* — =.meta/=, =CLAUDE.md=, house-style README header + badges +
+   topics + description, this =spec.org=. Coordinate with =aq= if other workers
+   share the tree.
+
+* 9. Reference instantiation — picker-state-projection
+
+The §2 fill for this repo (see =README.org= for the full Rosetta):
+
+| param        | value |
+|--------------+-------|
+| =CONCEPT=    | warehouse item lifecycle; source = =item_trace.csv= (log), derivation = =fold= (projector), view = =item_state_flags.csv= (wide flags) |
+| =STRUCTURE S=| chain =received < picking < picked < packed= (a total order) |
+| =VOCABULARIES=| KS Kafka, MQ cloud messaging, RA relational, ES event sourcing, DD derived data, EM microservices, OT order theory |
+| =INVARIANTS= | schema: I3 domain, I4 arity, I5 key; structure: I1 predecessor-closure + I2 non-empty = down-set; unobservable: I6 arrival vs event-time |
+| =DEFECTS=    | ITM-02 unknown state (irreducible), ITM-03 out-of-order delivery, ITM-04 null ts, ITM-05/06 domain, ITM-07/08 arity, ITM-01 duplicate; ITM-09/10 controls |
+| =LANGUAGES=  | Scala, TypeScript, SQL, Elixir, Python(ref), Go, Haskell |
+| =ORACLE=     | =examples/oracle-contract.txt= (PASS=7 via =bin/verify.sh=) |
+
+* 10. Proof of generality — two more fills
+
+To show the recipe is not event-specific, the §2 table filled for one
+event-focused problem and one that is not.
+
+** 10a. Event-focused: deployment ledger
+
+| param        | value |
+|--------------+-------|
+| =CONCEPT=    | deployment lifecycle; source = deploy event log, derivation = fold, view = per-service status board |
+| =STRUCTURE S=| chain =requested < building < deployed < verified= (or a small DAG with a =rolled_back= branch) |
+| =VOCABULARIES=| DORA/CD, GitOps, event sourcing, CDC/WAL, state machines, order theory |
+| =INVARIANTS= | schema: status ∈ domain, one row per (service,env), unique deploy id; structure: no =deployed= without =building= (down-set); unobservable: wall-clock order of deploys vs recorded commit order |
+| =DEFECTS=    | a status typo (irreducible), a rollback recorded before the deploy (order), a null timestamp, a duplicate webhook delivery, an out-of-domain env |
+| =LANGUAGES=  | (reuse the map; e.g. Clojure/babashka for GitOps, SQL for CDC, Elixir for ES, Haskell for OT) |
+| =ORACLE=     | same shape: sorted =(service, invariant, detail)= findings, byte-exact |
+
+Branching (=rolled_back=) exercises the /soundness vs completeness/ theorem from
+=README.org= Part 5: a DAG stays sound (valid rows = down-sets) but loses
+completeness (a valid row no longer determines one current status).
+
+** 10b. Not event-focused: spreadsheet / dataflow recalculation
+
+| param        | value |
+|--------------+-------|
+| =CONCEPT=    | a spreadsheet; source = the cells-with-formulas (the sheet), derivation = topological recalculation (the fold), view = the computed values grid |
+| =STRUCTURE S=| the dependency *DAG* over cells (a poset, not a chain) |
+| =VOCABULARIES=| reactive/dataflow (Rx), build systems (Make/Bazel), incremental computation, dependency resolution, functional (lazy eval), order theory |
+| =INVARIANTS= | schema: a referenced cell exists, formula arity, unique cell id; structure: *no cycle* (the DAG condition) and every value derives only from its declared inputs; unobservable: the recomputation /order/ (a value grid cannot show what depended on what) |
+| =DEFECTS=    | a formula referencing a missing cell (irreducible), a circular reference (structure), a stale cached value the recompute overwrites (rebuild-curable), a value hand-typed over a formula cell (anti-signal), a type-domain violation |
+| =LANGUAGES=  | e.g. TypeScript (Rx/reactive), a Makefile (build systems), Haskell (lazy eval + DAG), SQL recursive CTE (reachability), Racket/Scheme (incremental), Rust (dependency graph) |
+| =ORACLE=     | same shape: sorted =(cell, invariant, detail)=; the anti-signal (typed-over formula) is the exact analog of hand-editing the projection |
+
+Here "no cycle" replaces "down-set": for a general DAG the structure gate is
+acyclicity + reachability; the /unobservable/ shifts from time to /recomputation
+order/. The FP framing survives verbatim: recalc is a pure function of the sheet,
+so "same sheet, same values" is again referential transparency.
+
+* 11. Acceptance — what "done" means for an instantiation
+
+- §2 parameters filled; each invariant has a violating fixture row and a control.
+- A reference implementation exists and was /run/; its output is pinned as the
+  oracle contract.
+- =bin/verify.sh= exists, is negative-tested, and reports PASS for every language.
+- Defects are classified (rebuild-curable / irreducible / anti-signal) and the
+  irreducible one is asserted to survive rebuild.
+- =README.org= carries the Rosetta (three-artifacts, state-machine, defects,
+  invariants × vocabularies) and matches the observed oracle.
+- =.meta/=, =CLAUDE.md=, description, topics present; house style matched.
+- Any spec-refuting run recorded under =experiments/NNN/= and reconciled here.
+
+* 12. Bootstrapping — =bin/new-exercise=
+
+=bin/new-exercise= stamps a skeleton from the §2 parameters so a new instance
+starts at step 2 of the §8 recipe, not step 0. It *copies the problem-independent
+machinery verbatim* — the generic gate =bin/verify.sh= (it only needs
+=examples/*/run.sh= and =examples/oracle-contract.txt=, nothing problem-specific),
+=spec.org=, and the two =.meta/= discipline files — and *templates the
+problem-specific files*: a house-style =README.org= with the §2 parameter table
+pre-filled, a =CLAUDE.md= stub, the =data/ examples/ experiments/= layout, a
+=.gitignore=, and an oracle-contract placeholder to pin from the reference run.
+
+#+begin_example
+bin/new-exercise -d <target-dir> [-n <name>] \
+  [--concept "..."] [--structure "..."] [--vocab "a,b,c"] [--languages "x,y,z"] [--force]
+#+end_example
+
+What it does /not/ do (by design — these are the thinking, not the ceremony):
+choose the vocabularies, derive the invariants from S, inject the defects, write
+Part 1, or pin the oracle. Those are §§3–5 and §8.2–8.5. The bootstrapper removes
+the boilerplate so the author spends effort on the exercise, not the scaffold.
+A worked run is recorded in =experiments/002= (a four-step linear-process
+instance stamped, completed, and gated to PASS).
+
+* Seals
+
+Each row is frozen by an annotated git tag; the tag message records
+=sha256(spec.org)= of the committed blob. Verify any seal with
+=git show <tag>:spec.org | sha256=.
+
+| version | date       | tag           | seals |
+|---------+------------+---------------+-------|
+| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | the generator + =bin/new-exercise= bootstrapper; P1 audience-framing rule |
+
+* Changelog
+
+- =1.1.0= (2026-09-10) — add §12 and =bin/new-exercise=, the parameter-driven
+  skeleton bootstrapper; worked run in =experiments/002=; add the P1
+  audience-framing rule (§2) — frame CONCEPT to the audience's mental model
+  (orders for general audiences, WMS picking only for specialists).
+- =1.0.0= (2026-09-10) — initial. Extracted the construction method from the
+  built picker-state-projection (=README.org=, =.meta/=, =examples/=,
+  =experiments/001=) into a reusable, parameterized generator; added two
+  proof-of-generality fills (deployment ledger; spreadsheet recalculation).

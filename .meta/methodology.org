@@ -1,0 +1,97 @@
+#+TITLE: Operating disciplines — picker-state-projection
+#+SUBTITLE: How this repo works, specialized from gentle-symbolic-computation/.meta
+#+OPTIONS: toc:2 num:t ^:nil
+#+STARTUP: overview
+
+* What this is
+
+The operating manual for /this/ repo. It is the specialization, for a
+polyglot-exercise repo, of the general disciplines in
+=../gentle-symbolic-computation/.meta/methodology.org= (read that for the full
+statement). Nothing here contradicts it; it records the concrete shapes those
+disciplines take here.
+
+* The principle underneath
+
+Cheap generation makes verification the scarce discipline. The exercise is a
+generator of candidate implementations in seven languages; the binding
+constraint is knowing they are all correct. So the /oracle/ is the load-bearing
+artifact, built and pinned before the implementations.
+
+* Governing spec
+
+=README.org= is the single canonical document — the interviewer's guide and the
+statement of the exercise. Everything else defers to it:
+
+- =examples/CONTRACT.md= restates only what an implementer needs to act, and
+  points back at =README.org=.
+- When a derived file disagrees with =README.org=, the README wins and the
+  derived file is the bug. When a /run/ refutes the README (see the I6 gap,
+  =experiments/001=), the README is amended — the spec tracks observed reality.
+
+* The oracle, and one gate
+
+- =examples/oracle-contract.txt= is the oracle: the exact stdout every language
+  example must reproduce, byte-for-byte. Findings are sorted as
+  =(item_id, inv, detail)= tuples so map-iteration order is irrelevant across
+  languages. =examples/dd-python= is the authoritative reference that generates
+  it.
+- =bin/verify.sh= is the single gate: it runs each =examples/<tag>-<lang>/run.sh=
+  and diffs stdout against the contract. Zero findings, no warning tier — a gate
+  is a tripwire, not a promotion mechanism.
+- *Verify the verifier.* The harness is negative-tested: it must reject wrong
+  output (it does) and reach PASS on the reference. The checker inside each
+  example is negative-tested against =data/broken/= and must leave exactly the
+  irreducible defect (ITM-02) after rebuild.
+- *Run it before believing it.* No example is "done" on the strength of reading
+  it; it is done when =bin/verify.sh= prints PASS on the supported cell.
+
+* One editable representation
+
+The fixtures in =data/trace/= and =data/broken/= are the single source of truth
+for every language. Examples /read/ them; they never copy or clean them. The
+deliberate defects (ragged rows, null ts, unknown state) are the exercise — do
+not tidy them. Fold outputs in =data/rebuilt/= are generated and gitignored.
+
+* Re-tell, not port
+
+Each example teaches what its language does best for its vocabulary, not a
+transliteration of the Python reference. The map:
+
+| tag | vocabulary                 | language        |
+|-----+----------------------------+-----------------|
+| KS  | Kafka / stream processing  | Scala 3         |
+| MQ  | cloud messaging            | TypeScript/Deno |
+| RA  | relational algebra / SQL   | SQL (sqlite)    |
+| ES  | event sourcing / CQRS      | Elixir          |
+| DD  | derived data / streams     | Python (ref)    |
+| EM  | event-driven microservices | Go              |
+| OT  | order theory / categories  | Haskell         |
+
+Deleted ceremony: each uses its language's standard library and run idiom, no
+build tool or third-party deps. QuickCheck being absent, OT uses exhaustive
+=Data.List.permutations= — hermetic, no deps, and stronger than sampling.
+
+* Experiment-driven development
+
+Speculative or investigative work becomes =experiments/NNN-slug/= with a
+falsifiable hypothesis, a success criterion, what-could-go-wrong, the exact run
+command, and a promotion checklist; observations dated; numbering monotonic.
+=experiments/001-i6-oracle-gap= is the worked example: a run refuted the spec's
+stated output, the finding was recorded, the user chose the resolution, and the
+spec was amended. An experiment that refutes the spec amends the spec.
+
+* Progressive commit protocol
+
+Conventional commits, one logical step each; a toolchain or fixture change never
+rides inside a language-example commit. Stage specific files by name — never
+=git add -A/./--all=. Commits touching the spec, the oracle, or the harness carry
+a git note with a /Timeline/ (what was tried, including failures) and a
+/Reproduction/ (exact command + observed output + the cell). The value is the
+path, not only the endpoint.
+
+* The shape of a good move
+
+Survey → state or pin the oracle → smallest thing → run it (negative-test the
+checker) → declare it (conventional commit, note the timeline) → capture the
+lesson. The whole method is an apparatus for not fooling yourself.

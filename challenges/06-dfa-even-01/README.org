@@ -1,0 +1,19 @@
+#+TITLE: 06 — DFA: even 0s and even 1s
+#+STARTUP: showall
+* Difficulty
+5 / 8 — language recognition over an alphabet.
+* Provenance
+Hopcroft, Motwani & Ullman, /Introduction to Automata Theory/ (canonical DFA).
+* The machine
+- Alphabet ={0,1}=. States = parity of #0 seen × parity of #1 seen:
+  =EE, EO, OE, OO= (E=even, O=odd). Start & sole accepting state =EE=.
+- Transitions (complete, cyclic): reading =0= flips the 0-parity; =1= flips the
+  1-parity. e.g. =EE--0-->OE=, =EE--1-->EO=, =OE--0-->EE=, etc.
+* What to implement
+The fold is the extended transition function δ*: reduce an input string (an event
+stream of symbols) to a final state; the *projection* is =accept/reject= (final
+state =EE=?). Report unknown symbols and (optionally) the state trace.
+* The lesson
+The projection is a single boolean (accept), and the fold IS δ* — a catamorphism
+over the free monoid on the alphabet (spec §1). Completeness is total: every
+string maps to exactly one state.

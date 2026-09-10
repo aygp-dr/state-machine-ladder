@@ -1,0 +1,17 @@
+#+TITLE: 07 — LR(0) parser automaton
+#+STARTUP: showall
+* Difficulty
+6 / 8 — a pushdown automaton (needs a stack).
+* Provenance
+Graphviz gallery, /finite state machine/ (a yacc-generated LR automaton).
+* The machine
+- States =0..8=; accepting (doublecircle) ={0,3,4,8}=.
+- Edges (labelled with shifts/gotos), with *self-loops* at =5= (=S(a)=) and =6=
+  (=S(b)=) and back-edges (=7→5=, =8→5=, =8→6=): the graph is *cyclic*.
+* What to implement
+Fold a token stream through the automaton *with a state stack* (shift pushes,
+reduce pops): the view is the parse outcome (accept at an accepting state with
+empty input) plus a shift/reduce trace; report stuck/illegal transitions.
+* The lesson
+Beyond a finite-state view: an LR automaton needs a *stack*, so the "state" is
+=(control state, stack)= — the SICP register-machine lesson (08) foreshadowed.

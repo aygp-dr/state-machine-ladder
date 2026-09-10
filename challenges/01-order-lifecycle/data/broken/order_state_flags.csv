@@ -1,0 +1,12 @@
+order_id,placed,paid,shipped,delivered
+ORD-01,1,1,1,1
+ORD-02,1,,1,1
+ORD-03,1,1,,1
+ORD-04,,1,1,1
+ORD-05,1,1,0,1
+ORD-06,1,1,yes,1
+ORD-07,1,1,1
+ORD-01,1,1,1,1
+ORD-08,1,1,1,1,1
+ORD-09,1,1,,
+ORD-10,1,,,

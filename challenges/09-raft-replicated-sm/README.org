@@ -1,0 +1,21 @@
+#+TITLE: 09 — Raft replicated state machine (capstone)
+#+STARTUP: showall
+* Difficulty
+8 / 8 — the unifier.
+* Provenance
+Chelsea Troy, /Raft, Threads, Processes, and State Machines/; Ongaro & Ousterhout, Raft.
+* The machine
+- Node roles (a small FSM): =follower → candidate → leader=, with resets back to
+  =follower= on higher term. Election timeout, request-vote, append-entries.
+- The *replicated log* is the source of truth; each node *applies* the committed
+  log to its state machine to derive state.
+* What to implement
+Two folds: (a) the role FSM over election/heartbeat events; (b) the *replicated
+state machine* = =apply(committed_log) → state=. Show that two nodes with the
+same committed log reach the same state (determinism).
+* The lesson — this stitches the whole ladder together
+"A state machine is a deterministic function of its log." That is exactly this
+project's pattern: *source (log) → derivation (apply/fold) → view (state)*. Raft
+is the pattern made fault-tolerant: replicate the log, apply deterministically,
+and every replica's projection agrees. Everything below (chain, cycle, poset,
+DFA, LR, register machine) is a single-node instance of what Raft replicates.

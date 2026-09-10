@@ -1,0 +1,67 @@
+#+TITLE: Vocabulary — picker-state-projection
+#+SUBTITLE: The working terms of this exercise, and their canonical names
+#+OPTIONS: toc:2 num:t ^:nil
+#+STARTUP: overview
+
+* What this is
+
+The load-bearing terms used in this repo. Companion to
+[[./methodology.org][~methodology.org~]]. For the general spec-driven vocabulary
+(hermeticity, the test oracle, property-based testing, …) see
+=../gentle-symbolic-computation/.meta/vocabulary.org=; this file names the terms
+specific to the exercise.
+
+* The three artifacts
+
+- *trace / log* (=data/trace/item_trace.csv=) — the source of truth,
+  append-only, one row per transition, in arrival (offset) order.
+- *fold / projector* — the pure function that reduces the trace to a projection.
+- *projection / wide flags* (=data/broken/=, =data/rebuilt/=) — one row per item,
+  one boolean column per state. A /derived/ artifact; never a source of truth.
+
+Each has a name in all seven vocabularies (KS/MQ/RA/ES/DD/EM/OT) — that Rosetta
+table is Part 0 of =README.org=.
+
+* The state machine
+
+=received < picking < picked < packed= — a total order, i.e. a *chain*. A valid
+projection row is a *down-set* (order ideal) of the chain: downward-closed and,
+for I2, non-empty. I1 + I2 are that single order-theoretic property.
+
+* The invariants
+
+- *I1* predecessor closure (down-set).  *I2* =received= present (non-empty).
+  *I3* domain: cells ∈ {1, empty}.  *I4* arity.  *I5* unique =item_id=.
+- *Schema gate before state gate* — I4/I3 are checked before I1/I2; a row that
+  fails the schema gate is not evaluated for the state machine.
+- *I6* is timeliness, not integrity: *arrival order agrees with event-time*.
+  Reading an item's events in offset order, no delivered event may carry a =ts=
+  earlier than one already seen. This is DDIA's /event time vs processing time/.
+  It is the one thing only the log can show; the wide view forgets it.
+
+* The oracle
+
+- *oracle contract* (=examples/oracle-contract.txt=) — the byte-exact stdout
+  every example reproduces; findings sorted as =(item_id, inv, detail)=.
+- *the gate* (=bin/verify.sh=) — runs each example's =run.sh= and diffs against
+  the contract. A tripwire, not a promotion mechanism.
+- *supported cell* — the =(toolchain, platform)= a PASS was observed on. Here:
+  FreeBSD amd64 with the probed toolchains (Python, sqlite, Deno, Scala 3,
+  Elixir/OTP 26, Go 1.24, GHC 9.10 via runghc).
+
+* Terms coined / sharpened here
+
+- *fold as catamorphism* — the FP statement of "same log, same output": the fold
+  is a pure function =[Event] → Projection=, a catamorphism over the free monoid
+  on events. Replay, reprocessing, and rebuild are all "apply the same pure
+  function to the same list"; referential transparency is then free, not
+  enforced.
+- *the down-set is order-insensitive; I6 is order-sensitive* — the property the
+  =ot-haskell= permutation test asserts: folding an item's events in any order
+  yields the same flag-set (the projection deliberately forgets order), while I6
+  is the single observation that depends on arrival order.
+- *irreducible defect* — ITM-02's =pick=: not a real state, so no rebuild can
+  hide it. A rebuild that makes it vanish is concealing a defect, not fixing one.
+  Contrast the /rebuild-curable/ defects (ITM-01/03/05/06/07/08) that are
+  artifacts of the broken projection or its serializer and disappear on a clean
+  fold.
