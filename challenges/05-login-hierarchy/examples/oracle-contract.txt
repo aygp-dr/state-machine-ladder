@@ -1,0 +1,16 @@
+== anomalies ==
+SES-03 T2 LogOut->Settings
+SES-04 T2 Report1->Settings
+SES-05 unknown_state dashboard
+SES-06 null_ts Main
+SES-07 dup Main
+SES-08 I6 Main before Settings
+== current state ==
+SES-01 leaf=LogOut active=LogOut
+SES-02 leaf=LogOut active=LogOut
+SES-03 leaf=Settings active=LogIn,Settings
+SES-04 leaf=Settings active=LogIn,Settings
+SES-05 leaf=Main active=LogIn,Main
+SES-06 leaf=Main active=LogIn,Main
+SES-07 leaf=Main active=LogIn,Main
+SES-08 leaf=Settings active=LogIn,Settings
