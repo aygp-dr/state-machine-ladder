@@ -1,0 +1,15 @@
+== anomalies ==
+P04 unknown_label S(X)
+P05 T2 1:S(A)
+P06 null_ts SS(a)
+P07 dup SS(S)
+P08 I6 SS(B) before SS(a)
+== result ==
+P01 state=3 accept=yes stack=0,1,3
+P02 state=4 accept=yes stack=0,2,4
+P03 state=8 accept=yes stack=0,2,5,7,8
+P04 state=2 accept=no stack=0,2
+P05 state=1 accept=no stack=0,1
+P06 state=5 accept=no stack=0,2,5
+P07 state=3 accept=yes stack=0,1,3
+P08 state=5 accept=no stack=0,2,5

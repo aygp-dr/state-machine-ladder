@@ -5,9 +5,9 @@
 #+PROPERTY: header-args :mkdirp t
 #+STARTUP: overview
 
-[[./bin/verify.sh][https://img.shields.io/badge/reference-6%2F9_solved-yellow.svg]]
+[[./bin/verify.sh][https://img.shields.io/badge/reference-7%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
-[[./spec.org][https://img.shields.io/badge/spec-v2.5.0-blue.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v2.6.0-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
 [[./README.org][https://img.shields.io/badge/cell-FreeBSD_amd64-orange.svg]]
 
@@ -30,7 +30,7 @@ problem: /a state machine is a deterministic function of its log/.
 | 4 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/04-lamp-two-switch][lamp-two-switch]] | reversible graph ({0,1}^2) | 3 | learntla | *solved* |
 | 5 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/05-login-hierarchy][login-hierarchy]] | containment poset (tree) | 4 | learntla | *solved* |
 | 6 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/06-dfa-even-01][dfa-even-01]] | complete DFA (cyclic) | 5 | Hopcroft | *solved* |
-| 7 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/07-lr-parser-fsm][lr-parser-fsm]] | LR automaton + stack | 6 | Graphviz gallery | open |
+| 7 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/07-lr-parser-fsm][lr-parser-fsm]] | LR automaton + stack | 6 | Graphviz gallery | *solved* |
 | 8 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/08-register-machine][register-machine]] | controller + datapath | 7 | SICP §5.1 | open |
 | 9 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/09-raft-replicated-sm][raft-replicated-sm]] | replicated log -> apply | 8 | Raft / C. Troy | open |
 
