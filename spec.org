@@ -1,4 +1,4 @@
-#+TITLE: spec — the state-machine + eventing interview
+#+TITLE: spec - the state-machine + eventing interview
 #+SUBTITLE: The interview framework that generalizes the picker (the simple-chain case) across every structure class, and adds the event-sourcing / streaming dimension
 #+AUTHOR: Aidan Pace
 #+OPTIONS: toc:2 num:t ^:nil
@@ -6,10 +6,10 @@
 
 * Status
 
-- Version: =2.0.1=
-- Status: SEALED at v2.0.1 — frozen; any change requires a new version + re-seal
+- Version: =2.0.2=
+- Status: SEALED at v2.0.2 - frozen; any change requires a new version + re-seal
 - Date: 2026-09-10
-- Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe — a
+- Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe - a
   source-derivation-view /bootstrapper/ scoped mostly to the simple linear chain).
   This is a major generalization: from "how to stamp one chain-shaped exercise"
   to "the interview framework that grades the whole ladder across all structure
@@ -41,16 +41,16 @@ Every challenge is the same three artifacts and one claim.
 | *view*            | a lossy, convenient projection of the log         | derived; never authoritative |
 
 The deep FP statement, portable to every instance: the derivation is a
-*catamorphism over the free monoid on events* — a pure function =[Event] ->
+*catamorphism over the free monoid on events* - a pure function =[Event] ->
 View=. So "same log, same view" is *referential transparency*, not something you
 enforce; *replay*, *reprocessing*, and *rebuild* are all "apply the same pure
 function to the same list." A state machine is therefore *a deterministic
-function of its log* — the sentence the whole ladder turns on, and the sentence
+function of its log* - the sentence the whole ladder turns on, and the sentence
 Raft (§2.7, challenge 09) makes fault-tolerant.
 
 The picker is the simplest instance: a *chain*, whose view is a set of wide state
-flags. The claim there — "the wide-flag view is broken, and only some defects
-survive a clean rebuild" — is exactly what the taxonomy below generalizes. For
+flags. The claim there - "the wide-flag view is broken, and only some defects
+survive a clean rebuild" - is exactly what the taxonomy below generalizes. For
 most structure classes *the wide-flag view is not even sound*, and choosing the
 right projection is half of each challenge.
 
@@ -72,11 +72,11 @@ Two order-theoretic notions carry across the whole table:
   determines exactly one current state. On a chain both hold; the ladder walks
   the classes where one or both break.
 
-** 2.1. Chain — total order
+** 2.1. Chain - total order
 
 - *Instance*: challenge 01 order-lifecycle (=placed < paid < shipped <
   delivered=); the picker (=received < picking < picked < packed=).
-- *(a) valid projection*: a non-empty *down-set* of the chain — wide flags,
+- *(a) valid projection*: a non-empty *down-set* of the chain - wide flags,
   downward-closed.
 - *(b) wide flags SOUND?*: *yes*, and complete. This is the one class where the
   picker's whole apparatus applies unchanged.
@@ -84,49 +84,49 @@ Two order-theoretic notions carry across the whole table:
 - *(d) invariants*: schema gate (I3 domain, I4 arity, I5 unique key) checked
   /before/ the structure gate; structure gate I1 predecessor-closure + I2
   non-empty = down-set; the *unobservable* I6 = arrival order agrees with
-  event-time (a straggler check — the one property the view forgets).
+  event-time (a straggler check - the one property the view forgets).
 
-** 2.2. Cycle / reversible graph — NOT a poset
+** 2.2. Cycle / reversible graph - NOT a poset
 
 - *Instances*: challenge 02 traffic-light (3-cycle =red->green->yellow->red=);
-  challenge 04 lamp-two-switch (the Boolean lattice ={0,1}²= as a strongly-
+  challenge 04 lamp-two-switch (the Boolean lattice ={0,1}^2= as a strongly-
   connected reversible graph); challenge 03 elevator (a large /product/ automaton
-  with a request set — same lesson: not a chain, not acyclic).
-- *(a) valid projection*: the *current state* ∈ the (finite) state set, plus a
+  with a request set - same lesson: not a chain, not acyclic).
+- *(a) valid projection*: the *current state* in the (finite) state set, plus a
   transition-legality assertion over consecutive events.
-- *(b) wide flags SOUND?*: *no — UNSOUND*. A state is re-enterable, so the flag
+- *(b) wide flags SOUND?*: *no - UNSOUND*. A state is re-enterable, so the flag
   set loses multiplicity and admits non-paths; antisymmetry fails (a preorder,
   not a partial order), so there is no down-set characterization to project onto.
   This is the *refutation case*: it is what breaks the picker's view.
 - *(c) right projection*: =current_state= (the single current node) + a
   *transition-legality* check that every consecutive pair is a legal edge, + any
-  state predicate (lamp: =On ⇔ both switches on=; elevator: doors closed while
+  state predicate (lamp: =On iff both switches on=; elevator: doors closed while
   moving, never skip a requested floor, no reverse with requests the current way).
 - *(d) invariants*: schema gate as in 2.1; *T-legality* (every step is an edge of
-  S — an /illegal transition/); the state predicate; I6 arrival-vs-event-time;
+  S - an /illegal transition/); the state predicate; I6 arrival-vs-event-time;
   unknown-state and duplicate-delivery as schema-level defects.
 
-** 2.3. Containment poset / tree — down-sets generalize
+** 2.3. Containment poset / tree - down-sets generalize
 
 - *Instance*: challenge 05 login-hierarchy (leaves =LogOut, Main, Settings,
-  Report1, Report2=; containment =LogIn ⊃ {Main, Settings, Reports}=, =Reports ⊃
+  Report1, Report2=; containment =LogIn contains {Main, Settings, Reports}=, =Reports contains
   {Report1, Report2}=; a *tree* = genuine poset), with a /cyclic navigation graph/
   laid over the tree.
-- *(a) valid projection*: a *flag per ancestor*, downward-closed on the tree — the
+- *(a) valid projection*: a *flag per ancestor*, downward-closed on the tree - the
   set of active nodes is an *order ideal* (ancestor-closure: a node's flag implies
   its parent's). This is the picker's down-set, lifted from a chain to any poset.
 - *(b) wide flags SOUND?*: *yes* (a tree is a DAG; ancestor-sets are valid down-
   sets), but *not complete on its own*.
 - *(c) right projection*: the ancestor-closed flag set; for completeness add the
-  *one-leaf rule* — =TopDown[state] = {}=, i.e. exactly one active leaf pins the
+  *one-leaf rule* - =TopDown[state] = {}=, i.e. exactly one active leaf pins the
   current state.
 - *(d) invariants*: schema gate; ancestor-closure (down-set on the tree); the
   one-leaf completeness rule; transition-legality on the navigation graph (which
   is cyclic even though containment is not); I6.
 
-** 2.4. DAG — branching lifecycle (soundness/completeness theorem)
+** 2.4. DAG - branching lifecycle (soundness/completeness theorem)
 
-- *Instances*: the branching variants — a =rolled_back= branch on a deploy chain;
+- *Instances*: the branching variants - a =rolled_back= branch on a deploy chain;
   any lifecycle that forks. (Named here as the general case between 2.1 and 2.3;
   the picker README states the theorem, and challenge 05's tree is the acyclic
   witness.)
@@ -135,29 +135,29 @@ Two order-theoretic notions carry across the whole table:
 - *(b) wide flags SOUND?*: *sound but not complete*. This is the *soundness/
   completeness theorem*: on a DAG every emitted row is still a valid down-set
   (soundness holds), but a valid row no longer determines one current state
-  (completeness fails — two branch tips are both valid).
+  (completeness fails - two branch tips are both valid).
 - *(c) right projection*: the down-set /plus/ an explicit =current_state= column to
   restore completeness (make the fork observable).
 - *(d) invariants*: schema gate; acyclicity + reachability (the DAG condition);
   down-set; the completeness caveat asserted as a test; I6.
 
-** 2.5. DFA / finite automaton — the view collapses to accept/reject
+** 2.5. DFA / finite automaton - the view collapses to accept/reject
 
 - *Instance*: challenge 06 dfa-even-01 (even #0s and even #1s; states =EE, EO, OE,
-  OO= = parity × parity; complete, cyclic; start & sole accepting state =EE=).
-- *(a) valid projection*: a *single boolean* — =accept/reject= (is the final state
+  OO= = parity x parity; complete, cyclic; start & sole accepting state =EE=).
+- *(a) valid projection*: a *single boolean* - =accept/reject= (is the final state
   accepting?).
-- *(b) wide flags SOUND?*: N/A — the automaton is cyclic, so wide flags are unsound
+- *(b) wide flags SOUND?*: N/A - the automaton is cyclic, so wide flags are unsound
   as in 2.2; but the natural view collapses further, to one bit.
 - *(c) right projection*: run the fold to the final state, then test membership in
-  the accepting set. The *fold IS δ\**, the extended transition function — a
+  the accepting set. The *fold IS delta\**, the extended transition function - a
   catamorphism over the free monoid on the alphabet (§1). Completeness is /total/:
   every string maps to exactly one state.
 - *(d) invariants*: schema gate = alphabet membership (unknown symbols); the fold
   is total and deterministic; optionally the state trace; I6 if symbols are
   timestamped.
 
-** 2.6. Pushdown / register machine — state is (control, stack)
+** 2.6. Pushdown / register machine - state is (control, stack)
 
 - *Instances*: challenge 07 lr-parser-fsm (an LR(0) automaton, states =0..8=,
   accepting ={0,3,4,8}=, self-loops and back-edges -> cyclic, /needs a stack/);
@@ -166,7 +166,7 @@ Two order-theoretic notions carry across the whole table:
 - *(a) valid projection*: for the parser, the *parse outcome* (accept iff at an
   accepting control state with empty input) + a shift/reduce trace; for the
   register machine, the *register file at =done=*.
-- *(b) wide flags SOUND?*: *no* — a finite-state view is insufficient. The "state"
+- *(b) wide flags SOUND?*: *no* - a finite-state view is insufficient. The "state"
   is =(control state, stack)=; shift pushes, reduce pops. This is *beyond finite-
   state*: the datapath/stack makes the controller Turing-powerful.
 - *(c) right projection*: fold the token/instruction stream through =(control,
@@ -176,21 +176,21 @@ Two order-theoretic notions carry across the whole table:
   stack balance (pushes/pops reconcile); no read-before-write on registers;
   termination at an accepting/=done= state.
 
-** 2.7. Replicated state machine — the unifier
+** 2.7. Replicated state machine - the unifier
 
 - *Instance*: challenge 09 raft-replicated-sm (roles =follower -> candidate ->
   leader=, reset to =follower= on higher term; the *replicated log* is the source
   of truth; each node =apply=s the committed log to derive state).
-- *(a) valid projection*: two folds — (i) the role FSM over election/heartbeat
+- *(a) valid projection*: two folds - (i) the role FSM over election/heartbeat
   events (a cycle, §2.2); (ii) the *replicated state machine* =apply(committed_log)
   -> state=. The projection of interest: *every replica's derived state agrees*.
 - *(b) wide flags SOUND?*: the role FSM is a cycle (unsound wide flags); the applied
-  state machine is whatever S the application is — the point is not the shape but
+  state machine is whatever S the application is - the point is not the shape but
   the *replication*.
 - *(c) right projection*: replicate the *log*, then =apply= it deterministically;
   two nodes with the same committed log reach the same state. This is §1 made
   fault-tolerant.
-- *(d) invariants*: log agreement (same committed prefix ⇒ same state — the
+- *(d) invariants*: log agreement (same committed prefix => same state - the
   determinism assertion); role-FSM transition-legality; term monotonicity;
   commit-before-apply ordering.
 - *Why it unifies*: "a state machine is a deterministic function of its log." Every
@@ -203,17 +203,17 @@ Two order-theoretic notions carry across the whole table:
 | class (§)        | valid projection                 | wide flags sound?      | right projection when not          |
 |------------------+----------------------------------+------------------------+------------------------------------|
 | chain (2.1)      | non-empty down-set               | yes + complete         | (wide flags)                       |
-| cycle/graph (2.2)| current state + T-legality       | *no — unsound*         | current_state + transition check   |
+| cycle/graph (2.2)| current state + T-legality       | *no - unsound*         | current_state + transition check   |
 | poset/tree (2.3) | ancestor-closed set (down-set)   | sound, not complete    | down-set + one-leaf rule           |
 | DAG (2.4)        | down-set of the DAG              | sound, not complete    | down-set + current_state column    |
-| DFA (2.5)        | accept/reject (one bit)          | n/a (cyclic; collapses)| fold = δ*, test accepting set      |
-| pushdown/reg (2.6)| (control, stack) -> outcome      | *no — beyond finite*   | fold through (control, stack)      |
+| DFA (2.5)        | accept/reject (one bit)          | n/a (cyclic; collapses)| fold = delta*, test accepting set      |
+| pushdown/reg (2.6)| (control, stack) -> outcome      | *no - beyond finite*   | fold through (control, stack)      |
 | replicated (2.7) | apply(committed_log); replicas agree | n/a (unifier)      | replicate log, apply deterministically |
 
 * 3. The eventing interview dimension
 
-The taxonomy grades the /structure/. This section grades the /eventing/ — event
-sourcing and streaming — because the same log->derivation->view shape is where
+The taxonomy grades the /structure/. This section grades the /eventing/ - event
+sourcing and streaming - because the same log->derivation->view shape is where
 every one of these concepts /bites/. Each probe below names the concept, where it
 bites in the ladder, and what a strong answer looks like. The rubric (§3.2)
 weights the signals, generalizing the picker README's rubric.
@@ -225,13 +225,13 @@ weights the signals, generalizing the picker README's rubric.
 | E1 | *log as source of truth*         | all challenges; the wide view is never authoritative     | never repairs the view; always names the upstream log and its row shape       |
 | E2 | *ordering: arrival vs event-time / processing-time* | I6 in every challenge; traffic-light straggler | distinguishes /event time/ from /processing (arrival) time/; I6 is event-time  |
 | E3 | *idempotence & dedup*            | duplicate delivery (picker I5; 02/04 dup event)          | dedup by event key; a re-delivered event must not change the fold's result    |
-| E4 | *replay / reprocessing*          | the whole pattern (§1); rebuild-curable defects vanish   | replay = reprocess = rebuild; same log ⇒ same view (referential transparency) |
-| E5 | *log compaction*                 | chain/DFA (keep last per key vs full history)            | knows compaction is safe only when the fold depends on latest-per-key, not history/order — and that I6 needs history |
-| E6 | *exactly-once vs at-least-once*  | 02/04 duplicate; Raft apply (09)                         | at-least-once + idempotent fold ≈ effectively-once; true exactly-once needs dedup at the sink |
-| E7 | *CQRS: aggregate-validates vs projector-reports* | who rejects an illegal transition | the /aggregate/ (write side) rejects illegal transitions; the /projector/ (read side) only reports anomalies — it must not silently repair |
+| E4 | *replay / reprocessing*          | the whole pattern (§1); rebuild-curable defects vanish   | replay = reprocess = rebuild; same log => same view (referential transparency) |
+| E5 | *log compaction*                 | chain/DFA (keep last per key vs full history)            | knows compaction is safe only when the fold depends on latest-per-key, not history/order - and that I6 needs history |
+| E6 | *exactly-once vs at-least-once*  | 02/04 duplicate; Raft apply (09)                         | at-least-once + idempotent fold ~ effectively-once; true exactly-once needs dedup at the sink |
+| E7 | *CQRS: aggregate-validates vs projector-reports* | who rejects an illegal transition | the /aggregate/ (write side) rejects illegal transitions; the /projector/ (read side) only reports anomalies - it must not silently repair |
 | E8 | *event-carried state*            | fat vs thin events; register writes (08); AppendEntries (09) | events carry enough state to fold without external lookups; contrast thin notification events |
 | E9 | *backpressure / straggler / late arrival* | I6; elevator request bursts; Raft heartbeat timeout | late/straggling events are an ordering fact to surface (I6), not to reorder away; backpressure is a consumer-side concern, not a data defect |
-| E10 | *replication / determinism*     | Raft (09); every single-node class is a replica-of-one   | same committed log ⇒ same state on every replica; the fold must be deterministic (no wall-clock, no map-iteration order in output) |
+| E10 | *replication / determinism*     | Raft (09); every single-node class is a replica-of-one   | same committed log => same state on every replica; the fold must be deterministic (no wall-clock, no map-iteration order in output) |
 
 ** 3.2. Interviewer rubric (signals, weights)
 
@@ -241,21 +241,21 @@ listen for; weight is how much it moves the needle.
 | signal                                                                    | weight | class / concept |
 |---------------------------------------------------------------------------+--------+-----------------|
 | separates schema failures from structure failures, unprompted             | high   | any             |
-| picks the /right projection/ for the class (not wide flags by reflex)      | high   | 2.2–2.7         |
+| picks the /right projection/ for the class (not wide flags by reflex)      | high   | 2.2-2.7         |
 | says the wide-flag view is unsound for a cycle/reversible graph, and why   | high   | 2.2             |
 | states valid rows = down-sets, and lifts it from chain to poset/tree/DAG   | high   | 2.1/2.3/2.4     |
 | says ordering (event-time) is unobservable in the view, unprompted         | high   | E2              |
 | names the upstream log and gives its row shape                             | high   | E1              |
 | leaves the irreducible defect broken after rebuild and says why            | high   | E4              |
-| the projector /reports/ and the aggregate /validates/ — does not repair    | high   | E7              |
+| the projector /reports/ and the aggregate /validates/ - does not repair    | high   | E7              |
 | gives the DAG soundness-but-not-completeness theorem                       | medium | 2.4             |
 | adds current_state / anomaly columns to restore completeness               | medium | 2.4/2.2         |
 | dedups by event key; a redelivery does not change the fold                 | medium | E3/E6           |
 | distinguishes exactly-once from at-least-once + idempotent                 | medium | E6              |
-| writes the fold as δ* / catamorphism over the free monoid                  | medium | 2.5/§1          |
+| writes the fold as delta* / catamorphism over the free monoid                  | medium | 2.5/§1          |
 | recognizes (control, stack) is beyond finite-state                         | medium | 2.6             |
 | checks stack balance / no read-before-write                                | medium | 2.6             |
-| states "same committed log ⇒ same state" as determinism                    | medium | 2.7/E10         |
+| states "same committed log => same state" as determinism                    | medium | 2.7/E10         |
 | reasons about when compaction is safe (latest-per-key vs history)          | medium | E5              |
 | treats late arrival as a fact to surface, not to reorder away              | medium | E9              |
 | negative-tests the checker against the broken fixtures                     | medium | any             |
@@ -279,7 +279,7 @@ it best probes.
 | 3 | elevator           | product automaton (2.2)   | E8 E9 (state explosion; requests)|
 | 4 | lamp-two-switch    | reversible graph (2.2)    | E3 E6 (dedup; idempotent toggle) |
 | 5 | login-hierarchy    | containment poset (2.3)   | E4 E7 (down-set lift; report vs validate) |
-| 6 | dfa-even-01        | DFA (2.5)                 | E4 E5 (δ*; compaction of history)|
+| 6 | dfa-even-01        | DFA (2.5)                 | E4 E5 (delta*; compaction of history)|
 | 7 | lr-parser-fsm      | pushdown (2.6)            | E8 (event-carried; stack state)  |
 | 8 | register-machine   | register machine (2.6)    | E8 E4 (register writes; replay)  |
 | 9 | raft-replicated-sm | replicated SM (2.7)       | E6 E8 E10 (exactly-once; replication; determinism) |
@@ -300,11 +300,11 @@ What to hand the candidate, and when to switch structure class to test transfer.
    ancestor-closure. Watch for the one-leaf completeness rule.
 4. *Introduce branching (DAG, §2.4).* Elicit the soundness-but-not-completeness
    theorem; a strong candidate adds a =current_state= column unprompted.
-5. *Collapse to a bit (06 DFA).* The view is accept/reject; the fold is δ*. Probe
+5. *Collapse to a bit (06 DFA).* The view is accept/reject; the fold is delta*. Probe
    compaction (E5): what can you throw away and still recompute the answer?
 6. *Go beyond finite-state (07 / 08).* The state is =(control, stack)=. Probe
    stack balance and event-carried state (E8).
-7. *Close on replication (09 Raft).* Same committed log ⇒ same state. This retells
+7. *Close on replication (09 Raft).* Same committed log => same state. This retells
    every earlier challenge as a single-node instance of a replicated machine.
 
 Switch vocabulary (KS/MQ/RA/ES/DD/EM/OT) at any step to test whether the
@@ -312,17 +312,17 @@ candidate's model survives re-framing; following a deliberate switch is a rubric
 signal (§3.2). A candidate who holds several models shallowly is a stronger signal
 than one who holds one deeply.
 
-* 6. Acceptance — what "done" means for this spec
+* 6. Acceptance - what "done" means for this spec
 
 - §1 core pattern kept verbatim from the picker (source-derivation-view; fold =
   catamorphism over the free monoid; replay = reprocess = rebuild).
 - §2 taxonomy covers chain, cycle/reversible graph, containment poset/tree, DAG,
-  DFA, pushdown/register machine, replicated SM — each with (a) valid projection,
+  DFA, pushdown/register machine, replicated SM - each with (a) valid projection,
   (b) wide-flag soundness verdict, (c) the right projection when unsound, (d)
   invariants; and the soundness/completeness theorem is stated (§2.4).
-- §3 eventing interview: probes E1–E10 each tied to where they bite, and an
+- §3 eventing interview: probes E1-E10 each tied to where they bite, and an
   interviewer rubric with weighted signals + the anti-signal.
-- §4 maps every challenge 01–09 to a structure class /and/ the eventing concepts.
+- §4 maps every challenge 01-09 to a structure class /and/ the eventing concepts.
 - §5 interview flow: what to hand the candidate, when to switch structure class /
   vocabulary to test transfer.
 - Versioned 2.0.0, Status block present, Seals ledger + Changelog updated, sealed
@@ -352,23 +352,28 @@ Each row is frozen by an annotated git tag; the tag message records
 
 | version | date       | tag           | seals |
 |---------+------------+---------------+-------|
-| 2.0.0   | 2026-09-10 | =spec-v2.0.0= | generalization to the state-machine + eventing interview: §1 core pattern verbatim; §2 structure taxonomy (chain->replicated SM) with soundness/completeness; §3 eventing probes E1–E10 + rubric; §4 challenge map; §5 interview flow |
+| 2.0.0   | 2026-09-10 | =spec-v2.0.0= | generalization to the state-machine + eventing interview: §1 core pattern verbatim; §2 structure taxonomy (chain->replicated SM) with soundness/completeness; §3 eventing probes E1-E10 + rubric; §4 challenge map; §5 interview flow |
 | 2.0.1   | 2026-09-10 | =spec-v2.0.1= | typographic: purge the U+2192 arrow glyph from copy (style); no semantic change |
-| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded — copied picker generator) the source-derivation-view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
+| 2.0.2   | 2026-09-11 | =spec-v2.0.2= | typographic: purge remaining non-ASCII slop glyphs (em/en dash, delta, math/set symbols); keep section-sign; no semantic change |
+| 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded - copied picker generator) the source-derivation-view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
 
 * Changelog
 
-- =2.0.1= (2026-09-10) — typographic only: purge the U+2192 arrow glyph from all
+- =2.0.2= (2026-09-11) - typographic only: purge the remaining non-ASCII glyphs
+  that read as LLM slop (em/en dash to "-", ellipsis to "...", and math/notation
+  glyphs such as delta, multiplication, superscript, set membership, superset,
+  implication to plain ASCII words/operators). Section-sign kept. No semantic change.
+- =2.0.1= (2026-09-10) - typographic only: purge the U+2192 arrow glyph from all
   copy (per style); ASCII "->" kept only for technical transition notation,
   named patterns written hyphenated (source-derivation-view). No semantic change.
-- =2.0.0= (2026-09-10) — *major generalization*. Rewrote the copied picker
+- =2.0.0= (2026-09-10) - *major generalization*. Rewrote the copied picker
   generator (v1.1.0) into the generic *state-machine + eventing interview* spec
   that grades the whole ladder. Kept the core source-derivation-view pattern
   verbatim (§1). Added the *structure taxonomy* (§2): chain, cycle/reversible
   graph, containment poset/tree, DAG, DFA, pushdown/register machine, replicated
-  state machine — each with valid projection, wide-flag soundness verdict, right
+  state machine - each with valid projection, wide-flag soundness verdict, right
   projection, and invariants, plus the soundness/completeness theorem. Added the
-  *eventing interview dimension* (§3): probes E1–E10 (log-as-truth, event-time vs
+  *eventing interview dimension* (§3): probes E1-E10 (log-as-truth, event-time vs
   processing-time, idempotence/dedup, replay, compaction, exactly-once vs
   at-least-once, CQRS aggregate-validates vs projector-reports, event-carried
   state, backpressure/straggler/late-arrival, replication/determinism) and a
@@ -376,6 +381,6 @@ Each row is frozen by an annotated git tag; the tag message records
   concept map (§4), the interview flow with structure-class/vocabulary switches
   (§5), acceptance criteria for the spec itself (§6). The picker is now the
   reference /chain/ instance rather than the whole story.
-- =1.1.0= (2026-09-10) — (as copied from picker-state-projection) the
+- =1.1.0= (2026-09-10) - (as copied from picker-state-projection) the
   parameter-driven generator + =bin/new-exercise= bootstrapper; the P1 audience-
   framing rule. Scoped mostly to the simple linear chain. Superseded by 2.0.0.

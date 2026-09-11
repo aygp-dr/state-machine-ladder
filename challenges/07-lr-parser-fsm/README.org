@@ -1,7 +1,7 @@
-#+TITLE: 07 — LR(0) parser automaton
+#+TITLE: 07 - LR(0) parser automaton
 #+STARTUP: showall
 * Difficulty
-6 / 8 — a pushdown automaton (needs a stack).
+6 / 8 - a pushdown automaton (needs a stack).
 * Provenance
 Graphviz gallery, /finite state machine/ (a yacc-generated LR automaton).
 * The machine
@@ -14,4 +14,4 @@ reduce pops): the view is the parse outcome (accept at an accepting state with
 empty input) plus a shift/reduce trace; report stuck/illegal transitions.
 * The lesson
 Beyond a finite-state view: an LR automaton needs a *stack*, so the "state" is
-=(control state, stack)= — the SICP register-machine lesson (08) foreshadowed.
+=(control state, stack)= - the SICP register-machine lesson (08) foreshadowed.

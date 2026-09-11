@@ -1,14 +1,14 @@
-#+TITLE: 08 — register machine (controller as FSM)
+#+TITLE: 08 - register machine (controller as FSM)
 #+STARTUP: showall
 * Difficulty
-7 / 8 — a controller state machine over a datapath.
+7 / 8 - a controller state machine over a datapath.
 * Provenance
 Abelson & Sussman, /SICP/ §5.1 (GCD, factorial).
 * The machine
 - A *controller* = labelled instruction points (states) with =test/branch/goto=
   transitions, over a *datapath* of registers + operations (and a stack for
   recursion).
-- GCD: =test-b -> (b=0? done) -> t←rem(a,b); a←b; b←t; goto test-b= (a *loop*).
+- GCD: =test-b -> (b=0? done) -> t<-rem(a,b); a<-b; b<-t; goto test-b= (a *loop*).
 - Factorial: base test, push/pop stack around the recursive call (multiple
   entry/exit via saved =continue=).
 * What to implement

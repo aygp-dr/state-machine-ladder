@@ -1,4 +1,4 @@
-#+TITLE: Operating disciplines — picker-state-projection
+#+TITLE: Operating disciplines - picker-state-projection
 #+SUBTITLE: How this repo works, specialized from gentle-symbolic-computation/.meta
 #+OPTIONS: toc:2 num:t ^:nil
 #+STARTUP: overview
@@ -20,14 +20,14 @@ artifact, built and pinned before the implementations.
 
 * Governing spec
 
-=README.org= is the single canonical document — the interviewer's guide and the
+=README.org= is the single canonical document - the interviewer's guide and the
 statement of the exercise. Everything else defers to it:
 
 - =examples/CONTRACT.md= restates only what an implementer needs to act, and
   points back at =README.org=.
 - When a derived file disagrees with =README.org=, the README wins and the
   derived file is the bug. When a /run/ refutes the README (see the I6 gap,
-  =experiments/001=), the README is amended — the spec tracks observed reality.
+  =experiments/001=), the README is amended - the spec tracks observed reality.
 
 * The oracle, and one gate
 
@@ -37,7 +37,7 @@ statement of the exercise. Everything else defers to it:
   languages. =examples/dd-python= is the authoritative reference that generates
   it.
 - =bin/verify.sh= is the single gate: it runs each =examples/<tag>-<lang>/run.sh=
-  and diffs stdout against the contract. Zero findings, no warning tier — a gate
+  and diffs stdout against the contract. Zero findings, no warning tier - a gate
   is a tripwire, not a promotion mechanism.
 - *Verify the verifier.* The harness is negative-tested: it must reject wrong
   output (it does) and reach PASS on the reference. The checker inside each
@@ -50,7 +50,7 @@ statement of the exercise. Everything else defers to it:
 
 The fixtures in =data/trace/= and =data/broken/= are the single source of truth
 for every language. Examples /read/ them; they never copy or clean them. The
-deliberate defects (ragged rows, null ts, unknown state) are the exercise — do
+deliberate defects (ragged rows, null ts, unknown state) are the exercise - do
 not tidy them. Fold outputs in =data/rebuilt/= are generated and gitignored.
 
 * Re-tell, not port
@@ -70,7 +70,7 @@ transliteration of the Python reference. The map:
 
 Deleted ceremony: each uses its language's standard library and run idiom, no
 build tool or third-party deps. QuickCheck being absent, OT uses exhaustive
-=Data.List.permutations= — hermetic, no deps, and stronger than sampling.
+=Data.List.permutations= - hermetic, no deps, and stronger than sampling.
 
 * Experiment-driven development
 
@@ -84,7 +84,7 @@ spec was amended. An experiment that refutes the spec amends the spec.
 * Progressive commit protocol
 
 Conventional commits, one logical step each; a toolchain or fixture change never
-rides inside a language-example commit. Stage specific files by name — never
+rides inside a language-example commit. Stage specific files by name - never
 =git add -A/./--all=. Commits touching the spec, the oracle, or the harness carry
 a git note with a /Timeline/ (what was tried, including failures) and a
 /Reproduction/ (exact command + observed output + the cell). The value is the

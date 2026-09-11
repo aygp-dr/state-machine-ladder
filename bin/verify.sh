@@ -1,7 +1,7 @@
 #!/bin/sh
-# verify.sh — ladder runner. For each challenge that ships a reference solution
+# verify.sh - ladder runner. For each challenge that ships a reference solution
 # (an oracle + at least one example run.sh), run its own gate and aggregate.
-# A challenge with no reference is reported OPEN, not FAIL — the point is for
+# A challenge with no reference is reported OPEN, not FAIL - the point is for
 # someone to implement it.
 #
 # Usage: bin/verify.sh [challenge-dir ...]   (default: all challenges/*)

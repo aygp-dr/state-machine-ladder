@@ -1,5 +1,5 @@
 #!/bin/sh
-# new-exercise — stamp a concept-exercise skeleton from spec.org's §2 parameters.
+# new-exercise - stamp a concept-exercise skeleton from spec.org's §2 parameters.
 #
 # Bootstraps a new source-derivation-view exercise repo: copies the
 # problem-INDEPENDENT machinery verbatim (the generic gate, the .meta
@@ -37,7 +37,7 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$DIR" ] || { echo "FATAL: -d <target-dir> required (see --help)" >&2; exit 2; }
 [ -n "$NAME" ] || NAME=$(basename "$DIR")
-[ -n "$CONCEPT" ]   || CONCEPT="TODO: one line — source / derivation / view names"
+[ -n "$CONCEPT" ]   || CONCEPT="TODO: one line - source / derivation / view names"
 [ -n "$STRUCTURE" ] || STRUCTURE="TODO: chain | poset | DAG | lattice"
 [ -n "$VOCAB" ]     || VOCAB="TODO,TODO,TODO"
 [ -n "$LANGUAGES" ] || LANGUAGES="TODO,TODO,TODO"
@@ -81,7 +81,7 @@ EOF
 VOCAB_ROWS=$(printf '%s' "$VOCAB" | tr ',' '\n' | sed 's/^/- /')
 cat > "$DIR/README.org" <<EOF
 #+TITLE: $NAME
-#+SUBTITLE: TODO one line — one problem, N vocabularies, N languages
+#+SUBTITLE: TODO one line - one problem, N vocabularies, N languages
 #+AUTHOR: Aidan Pace
 #+OPTIONS: toc:2 num:nil ^:nil
 #+PROPERTY: header-args :mkdirp t
@@ -119,7 +119,7 @@ EOF
 
 # --- CLAUDE.md stub ---
 cat > "$DIR/CLAUDE.md" <<EOF
-# CLAUDE.md — $NAME
+# CLAUDE.md - $NAME
 
 ## What Is This
 

@@ -7,13 +7,13 @@
 
 [[./bin/verify.sh][https://img.shields.io/badge/reference-1%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
-[[./spec.org][https://img.shields.io/badge/spec-v2.0.1-blue.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v2.0.2-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
 [[./README.org][https://img.shields.io/badge/cell-FreeBSD_amd64-orange.svg]]
 
 Nine state machines of increasing difficulty, each posed as the same problem:
 *reconstruct a view from a log*. Every machine is a source-derivation-view
-instance (see [[./spec.org][=spec.org=]]) — the source is an append-only event log, the
+instance (see [[./spec.org][=spec.org=]]) - the source is an append-only event log, the
 derivation is a pure fold, and the view is a projection. Your job is to implement
 the fold and reproduce the challenge's byte-exact oracle. The ladder climbs from
 a linear chain (trivial as an event stream) to a replicated state machine (Raft),
@@ -27,7 +27,7 @@ problem: /a state machine is a deterministic function of its log/.
 | 1 | order-lifecycle    | chain (total order)      | 1          | reference         | *solved* |
 | 2 | traffic-light      | 3-cycle                  | 2          | classic / TLA+    | open    |
 | 3 | elevator           | product + request set    | 4          | classic           | open    |
-| 4 | lamp-two-switch    | reversible graph ({0,1}²)| 3          | learntla          | open    |
+| 4 | lamp-two-switch    | reversible graph ({0,1}^2)| 3          | learntla          | open    |
 | 5 | login-hierarchy    | containment poset (tree) | 4          | learntla          | open    |
 | 6 | dfa-even-01        | complete DFA (cyclic)    | 5          | Hopcroft          | open    |
 | 7 | lr-parser-fsm      | LR automaton + stack     | 6          | Graphviz gallery  | open    |
@@ -35,7 +35,7 @@ problem: /a state machine is a deterministic function of its log/.
 | 9 | raft-replicated-sm | replicated log -> apply   | 8          | Raft / C. Troy    | open    |
 
 The structure column is the point: a *chain* has a sound wide-flag projection
-(down-sets); a *cycle* or *reversible graph* does not — there the view must be
+(down-sets); a *cycle* or *reversible graph* does not - there the view must be
 the current state plus a transition-legality check; a *poset* (the login tree)
 restores down-sets in general form; a *DFA* collapses the view to accept/reject;
 an *LR automaton* and a *register machine* need a stack; *Raft* replicates the
@@ -54,7 +54,7 @@ Each challenge is =challenges/NN-<name>/=. A *solved* one ships fixtures under
 =data/=, a reference under =examples/<tag>-<lang>/= whose =run.sh= prints the
 oracle, and =examples/oracle-contract.txt=; =bin/verify.sh= diffs them. An *open*
 one ships the spec (states, transitions, structure, what to implement, how it is
-judged) — build the fixtures + reference per =spec.org= §8 and pin the oracle.
+judged) - build the fixtures + reference per =spec.org= §8 and pin the oracle.
 
 * Layout
 

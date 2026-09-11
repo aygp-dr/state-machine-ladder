@@ -1,5 +1,5 @@
 #+TITLE: order-lifecycle
-#+SUBTITLE: TODO one line — one problem, N vocabularies, N languages
+#+SUBTITLE: TODO one line - one problem, N vocabularies, N languages
 #+AUTHOR: Aidan Pace
 #+OPTIONS: toc:2 num:nil ^:nil
 #+PROPERTY: header-args :mkdirp t

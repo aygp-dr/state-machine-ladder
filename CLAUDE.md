@@ -1,10 +1,10 @@
-# CLAUDE.md — state-machine-ladder
+# CLAUDE.md - state-machine-ladder
 
 ## What Is This
 
 A graded set of nine state machines, each posed as "reconstruct a view from a
 log" (source-derivation-view, see `spec.org`). Challenge 01 is a worked, green
-reference; 02–09 are open challenges to implement. `README.org` is canonical.
+reference; 02-09 are open challenges to implement. `README.org` is canonical.
 
 ## Quick Reference
 
