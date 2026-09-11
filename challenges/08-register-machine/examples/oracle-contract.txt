@@ -1,0 +1,18 @@
+== anomalies ==
+RM-03 E-jump nowhere
+RM-04 E-branch
+RM-05 E-halted assign
+RM-06 null_ts assign
+RM-07 dup assign:a=1
+RM-08 I6 assign:b=2
+RM-09 unknown_op mul
+== final state ==
+RM-01 regs=a=6,b=4,t=1 halted=yes
+RM-02 regs=x=10 halted=yes
+RM-03 regs=a=1 halted=yes
+RM-04 regs=a=1 halted=yes
+RM-05 regs=a=2 halted=yes
+RM-06 regs=a=5 halted=yes
+RM-07 regs=a=1 halted=yes
+RM-08 regs=a=1,b=2 halted=yes
+RM-09 regs=a=1 halted=yes

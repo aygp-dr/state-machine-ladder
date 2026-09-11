@@ -6,8 +6,8 @@
 
 * Status
 
-- Version: =2.6.0=
-- Status: SEALED at v2.6.0 - frozen; any change requires a new version + re-seal
+- Version: =2.7.0=
+- Status: SEALED at v2.7.0 - frozen; any change requires a new version + re-seal
 - Date: 2026-09-10
 - Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe - a
   source-derivation-view /bootstrapper/ scoped mostly to the simple linear chain).
@@ -361,10 +361,12 @@ Each row is frozen by an annotated git tag; the tag message records
 | 2.4.0   | 2026-09-11 | =spec-v2.4.0= | realize challenge 05 login-hierarchy (containment poset/tree; ancestor-closed down-set projection + nav-legality; green gate) |
 | 2.5.0   | 2026-09-11 | =spec-v2.5.0= | realize challenge 06 dfa-even-01 (complete DFA; view collapses to accept/reject, fold = delta*; green gate) |
 | 2.6.0   | 2026-09-11 | =spec-v2.6.0= | realize challenge 07 lr-parser-fsm (LR(0) automaton + state stack; pushdown; green gate) |
+| 2.7.0   | 2026-09-11 | =spec-v2.7.0= | realize challenge 08 register-machine (controller trace over a datapath; final register file + halted; green gate) |
 | 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded - copied picker generator) the source-derivation-view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
 
 * Changelog
 
+- =2.7.0= (2026-09-11) - realize challenge 08 (register-machine): a SICP-style controller execution trace folded to the final register file, checking jump/branch/halt legality (spec sec 2.6). Oracle pinned, green gate.
 - =2.6.0= (2026-09-11) - realize challenge 07 (lr-parser-fsm): the Graphviz LR(0) automaton driven with a state stack; state = (control, stack), beyond finite-state (spec sec 2.6). Oracle pinned, green gate.
 - =2.5.0= (2026-09-11) - realize challenge 06 (dfa-even-01): a complete DFA over {0,1} accepting even-0s-even-1s; the view collapses to a single accept/reject bit and the fold is delta* (spec sec 2.5). Oracle pinned, green gate.
 - =2.4.0= (2026-09-11) - realize challenge 05 (login-hierarchy): containment tree (a poset); the down-set/flag projection returns as ancestor-closure, lifted from a chain to a tree (spec sec 2.3), with transition-legality on the cyclic navigation graph. Oracle pinned, green gate.
