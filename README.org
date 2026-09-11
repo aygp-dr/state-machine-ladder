@@ -5,7 +5,7 @@
 #+PROPERTY: header-args :mkdirp t
 #+STARTUP: overview
 
-[[./bin/verify.sh][https://img.shields.io/badge/reference-1%2F9_solved-yellow.svg]]
+[[./bin/verify.sh][https://img.shields.io/badge/reference-2%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
 [[./spec.org][https://img.shields.io/badge/spec-v2.0.2-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
@@ -25,7 +25,7 @@ problem: /a state machine is a deterministic function of its log/.
 | # | challenge          | structure S              | difficulty | source            | status  |
 |---+--------------------+--------------------------+------------+-------------------+---------|
 | 1 | order-lifecycle    | chain (total order)      | 1          | reference         | *solved* |
-| 2 | traffic-light      | 3-cycle                  | 2          | classic / TLA+    | open    |
+| 2 | traffic-light      | 3-cycle                  | 2          | classic / TLA+    | *solved*    |
 | 3 | elevator           | product + request set    | 4          | classic           | open    |
 | 4 | lamp-two-switch    | reversible graph ({0,1}^2)| 3          | learntla          | open    |
 | 5 | login-hierarchy    | containment poset (tree) | 4          | learntla          | open    |

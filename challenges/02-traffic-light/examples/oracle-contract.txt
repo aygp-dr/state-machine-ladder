@@ -1,0 +1,14 @@
+== anomalies ==
+SIG-03 T2 red->yellow
+SIG-04 unknown_state blue
+SIG-05 null_ts green
+SIG-06 dup green
+SIG-07 I6 green before yellow
+== current state ==
+SIG-01 green
+SIG-02 red
+SIG-03 yellow
+SIG-04 green
+SIG-05 green
+SIG-06 green
+SIG-07 yellow
