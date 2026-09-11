@@ -1,0 +1,207 @@
+--- a/spec.org
++++ b/spec.org
+@@ -9,0 +10 @@
++- Proposed: =2.9.0= (DRAFT, unsealed) - adds sec 2.9 timed reservation; the seal (version bump + annotated tag with sha256) is the ladder owner's, at merge.
+@@ -200,0 +202,168 @@
++** 2.9. Timed reservation over a resource - two coupled machines + interval scheduling
++
++- *Instance*: experiment 004 (proposed challenge 10 timed-reservation). It uses
++  conference rooms, with the no-show release. Stretch variant: the DHCP lease
++  (RFC 2131 figure 5). Backward link: inventory allocation (see the note on
++  sec 2.1 below). Downstream instance: =aygp-dr/display-reservation=.
++- *Structure*: two state machines share a resource key, and a time axis sits on
++  top of them. Neither the picker nor a plain state chain has a time axis.
++  - The *resource lifecycle* R says whether the thing can be reserved at all.
++    Its initial state is =acquired= and its sole terminal is =retired=. By its
++    edge table, R is *cyclic*: =available, in-service, maintenance,
++    out-of-order= lie on cycles, for example =available -> maintenance ->
++    available= and =available -> in-service -> available=. R is a sec 2.2
++    cycle.
++  - The *reservation lifecycle* V says what one party holds against the
++    resource over an interval =[start, end)=. By its edge table, V is *acyclic*,
++    with terminals =completed, cancelled, expired, no-show=. V is a sec 2.4 DAG
++    with terminals. =overdue= is a live, non-terminal exit: it still holds the
++    resource, and it ends at =check_out=.
++  - =check_in= and =check_out= are *shared events*. They form a synchronous
++    product: one event moves both machines, so =in-service= is the
++    resource-side image of =active= / =overdue=.
++  - =reassign= is a *key-changing* event, not a V edge. It rebinds a held or
++    confirmed reservation to another resource instance, and its V state does
++    not change.
++
++Resource lifecycle R. These are the legal edges; any other (from, event) pair
++is an illegal transition (T2). =writer= is the source allowed to write the
++event. The write side enforces it (sec 3.1 E7), and the projector reports a
++violation as S1.
++
++| from | event | to | writer |
++|-+-+-+-|
++| acquired | commission | available | operator |
++| available | check_in | in-service | party |
++| in-service | check_out | available | party/operator |
++| available | maintain | maintenance | scheduler/operator |
++| out-of-order | maintain | maintenance | scheduler/operator |
++| maintenance | restore | available | scheduler/operator |
++| out-of-order | restore | available | scheduler/operator |
++| available | fault | out-of-order | operator |
++| in-service | fault | out-of-order | operator |
++| available | retire | retired | operator |
++| maintenance | retire | retired | operator |
++| out-of-order | retire | retired | operator |
++
++Reservation lifecycle V. These are the legal edges. =request= creates the
++reservation. The last row is the key-changing =reassign=, which is not an edge.
++
++| from | event | to | writer |
++|-+-+-+-|
++| (none) | request | requested | party |
++| requested | hold | held | party |
++| requested | cancel | cancelled | party/operator |
++| requested | expire | expired | scheduler |
++| held | confirm | confirmed | party |
++| held | cancel | cancelled | party/operator |
++| held | expire | expired | scheduler |
++| confirmed | check_in | active | party |
++| confirmed | cancel | cancelled | party/operator |
++| confirmed | no_show | no-show | scheduler |
++| active | check_out | completed | party/operator |
++| active | overdue | overdue | scheduler |
++| overdue | check_out | completed | party/operator |
++| confirmed, held | reassign | (unchanged; key := new instance) | operator |
++
++The time axis. Deadlines are policy constants (=HOLD_TTL= = 15 min,
++=CHECKIN_WINDOW= = 10 min). Each live state's deadline is discharged by an event
++that a *scheduler writes into the log*. =overdue= has no deadline; it ends at
++=check_out=.
++
++| live state | deadline | scheduler event | edge |
++|-+-+-+-|
++| held | hold.ts + 15 min | expire | held -> expired |
++| confirmed | start + 10 min | no_show | confirmed -> no-show |
++| active | end + 0 min | overdue | active -> overdue |
++
++The named sets:
++
++| set | members |
++|-+-|
++| R states | acquired, available, in-service, maintenance, out-of-order, retired |
++| V states | requested, held, confirmed, active, overdue, completed, cancelled, expired, no-show |
++| LIVE | active, confirmed, held, overdue |
++| AVAILABLE | available, in-service |
++| resource-only events | commission, fault, maintain, restore, retire |
++| reservation-only events | cancel, confirm, expire, hold, no_show, overdue, reassign, request |
++| shared events | check_in, check_out |
++| scheduler events | expire, no_show, overdue |
++
++- *Live*: =requested= is not live, because nothing has been admitted yet. The
++  four terminals are not live. =in-service= is in AVAILABLE because a resource
++  in use now can still carry live reservations for later intervals.
++- *Coupling predicate C*: for every reservation v bound to a resource instance
++  r, =v.state in LIVE => r.state in AVAILABLE=. A class key (late binding) is
++  not an instance, so C and I7 apply to v once it binds.
++- *Interval invariant I7 (non-overlap)*: for every resource instance r and every
++  pair =v != w= of reservations bound to r with =v.state, w.state in LIVE=,
++  =v.end <= w.start= or =w.end <= v.start=. The intervals are half-open. This is
++  interval scheduling: it is not a chain and not a DAG.
++- *Fencing F1*: per resource r, =fence(r)= is the highest token r has accepted
++  (initially 0). =check_in= must carry =token > fence(r)= and then sets
++  =fence(r) := token=. =check_out= must carry =token = fence(r)=. Any other token
++  is *fenced*: the event is rejected by the resource, reported, and not applied.
++  This is the distributed-lock-lease answer to stale holders: the reservation
++  carries a monotone version per resource.
++- *Late binding*: a reservation may be booked against a class key and bound to
++  an instance at =check_in=. =reassign= rebinds it as compensation. The
++  resource key on the reservation changes over its life, so the view keeps
++  =booked= (the key at =request=) and =key= (the current key) per reservation.
++
++- *(a) valid projection*: Per resource instance: =current_state= (R), =fence=,
++  and the *set of live intervals* bound to it, each with its reservation id and
++  its =current_state= (V). Per reservation: =current_state=, =booked=, =key=.
++  Plus the anomaly list.
++- *(b) wide flags SOUND?*: *no - and adding flags cannot repair it*. R is a cycle
++  (unsound, sec 2.2). V is a DAG (sound but not complete, sec 2.4). I7 is worse:
++  it is not a property of any single entity's history. It is a /binary
++  relation between reservations that share a key over the time axis/. The
++  flag / down-set projection is per-entity and unary, so no choice of flags on
++  R, on V, or on their product can express non-overlap. Neither can a
++  current_state column alone.
++- *(c) right projection*: per resource, the set of live intervals, both
++  current_state columns (R's for the resource, V's for each live interval),
++  and the coupling check C. Admission (=hold=, =reassign=, a late-binding
++  =check_in=) evaluates C and I7 against that set. The fold is still a pure
++  =[Event] -> View= catamorphism and *never* =(log, clock) -> view=. Expiry,
++  no-show and overdue are events a scheduler writes into the log. The fold's
++  only "now" is the log's own *watermark* (the maximum event-time in the log).
++  The watermark is used only to report a deadline that passed with no
++  scheduler event (X1), never to synthesize one.
++- *(d) invariants*:
++  - schema gate: =unknown_event=, =null_ts=, =dup= on the event key;
++  - I6 per resource key: arrival order vs event-time;
++  - S1 writer authority: scheduler events are scheduler-written;
++  - T2 on each machine: every step is an edge of R or V, and a shared event
++    must be legal on both;
++  - F1 fencing;
++  - B1: a late bind lands on an instance of the booked class;
++  - C1, coupling at admission: a hold, reassign or late bind onto an instance
++    outside AVAILABLE, which the write side should have rejected;
++  - I7 non-overlap at admission;
++  - X1 expiry-as-event at the watermark: a live reservation whose deadline is
++    at or before the watermark with no scheduler event;
++  - C2 compensation at the watermark: a live reservation bound to an instance
++    outside AVAILABLE with no compensating event. The resource's own clock
++    (=fault=, =maintain=) took the instance away. Compensation is an operator
++    =reassign=, an operator =cancel=, or the instance returning to AVAILABLE.
++- *What this class adds*:
++  1. *Expiry without an event*: absence by a deadline is itself an event,
++     written by a scheduler.
++  2. *Late binding to a class*: the key changes over a life, so identity is
++     the reservation id, not =(item_id, state)=, and a second entity is needed.
++  3. *Two clocks*: the resource's timeline can revoke it mid-reservation, so a
++     compensation path is required.
++  4. *Contention*: admission is transactional. It is the one place where the
++     read model cannot lag the log, so DDIA's timeliness is a hard requirement
++     rather than a nice property, and the fencing token guards against stale
++     holders.
++- *Back to sec 2.1 and the picker*: the picker's =allocated= state was already a
++  reservation, and the packet never said so. Inventory allocation (a quantity
++  of a SKU at a location: allocated (soft), reserved (hard), picked, shipped,
++  released back) is the resource-side view of that chain. The picker chain was
++  one reservation's lifecycle seen from the item. Its flag projection was sound
++  because it looked at one entity. Once two reservations compete for the same
++  on-hand quantity, the invariant becomes cross-entity (I7, with a capacity
++  sum in place of pairwise disjointness), and flags no longer suffice.
++
+@@ -211,0 +381 @@
++| timed resv (2.9) | per-resource live intervals + both current_states | *no - cross-entity (I7)* | live-interval set + current_state x2 + coupling C |
+@@ -234,0 +405,5 @@
++| E11 | *expiry as an event (absence by a deadline)* | no-show, hold TTL, overdue (2.9) | a scheduler writes expire/no_show/overdue into the log; the fold stays =[Event] -> View=, never =(log, clock) -> view=; the watermark only reports a missed deadline (X1), it never synthesizes one |
++| E12 | *late binding / key change* | class-booked reservation bound at check_in; reassign (2.9) | the resource key changes over the entity's life, so identity is the reservation id, not =(resource, state)=; keeps booked and bound keys; a second entity (the resource) is required |
++| E13 | *two clocks + compensation* | resource fault/maintenance under a confirmed reservation (2.9) | the resource's own timeline can revoke; each stranded live reservation needs a compensating event (reassign / operator cancel); the projector reports a missing one (C2), it does not invent it |
++| E14 | *contention / admission timeliness* | overlapping holds on one resource (2.9) | admission checks non-overlap transactionally against the live-interval set; an I7 finding means admission ran on a lagging read model; timeliness is a hard requirement here |
++| E15 | *fencing tokens* | a stale holder's check_out after a newer check_in (2.9) | a per-resource monotone token; the resource rejects any token below its fence, so a stale holder cannot write; distinguishes fencing (reject a stale writer) from dedup (ignore an identical redelivery) |
+@@ -262,0 +438,5 @@
++| says the fold takes no clock: expiry is a scheduler-written event          | high   | E11             |
++| says non-overlap is cross-entity (interval scheduling), so no flag projection expresses it | high | 2.9 |
++| names the compensation path when the resource's own clock revokes          | medium | E13             |
++| makes admission transactional and fences stale holders with a monotone token | medium | E14/E15       |
++| keeps the booked key and the bound key separately (late binding)           | medium | E12             |
+@@ -285,0 +466 @@
++| 10 | timed-reservation (proposed) | R cycle (2.2) x V DAG (2.4) + intervals (2.9) | E2 E3 E7 E11 E12 E13 E14 E15 |
+@@ -308,0 +490,5 @@
++8. *Add time and a second entity (2.9, proposed 10).* Hand over the interleaved
++   room/booking log. Watch for three things. Does the candidate keep the fold
++   clock-free, with expiry as a scheduler event? Do they notice that
++   non-overlap is a relation between entities, which no flag view expresses?
++   And do they make admission transactional?
+@@ -365,0 +552 @@
++| 2.9.0   | (at merge) | =spec-v2.9.0= | add timed reservation (sec 2.9): two coupled machines (R cycle, V DAG) + interval scheduling; expiry as a scheduler event; fencing; green experiment gate |
+@@ -369,0 +557,9 @@
++- =2.9.0= (DRAFT, unsealed) - add sec 2.9 timed reservation over a resource: a
++  resource lifecycle (cycle, sec 2.2) and a reservation lifecycle (DAG with
++  terminals, sec 2.4) coupled on a shared key through the shared events
++  check_in/check_out, plus a time axis and the interval-scheduling invariant I7,
++  which no flag/down-set projection can express. Expiry, no-show and overdue are
++  scheduler-written events, so the fold stays [Event] -> View. Adds probes
++  E11-E15 (expiry-as-event, late binding, two clocks + compensation, admission
++  timeliness, fencing). Realized by experiment 004 (proposed challenge 10);
++  oracle pinned, green experiment gate, 5/5 mutants killed.
