@@ -1,0 +1,273 @@
+#+TITLE: core.logic log generators for the ladder
+#+SUBTITLE: Configuration, the relational approach, worked examples, and diagrams
+#+AUTHOR: Aidan Pace
+#+OPTIONS: toc:2 num:t ^:nil
+#+STARTUP: overview
+
+* What this is and why
+
+Each ladder challenge ships a /reference/ implementation (a fold from a log to a
+view) and a byte-exact /oracle/. A reference can be wrong in ways its own pinned
+oracle cannot catch, because the oracle was produced by that same reference. A
+*simulator* is an independent second opinion: it generates a corpus of logs with
+known verdicts, and we check the reference agrees.
+
+The interesting claim is that for these state machines the generator and the
+checker can be *the same relation*. In Clojure's core.logic a relation like
+"this word is accepted by the DFA" is not a function you call in one direction:
+
+- run it *forward* (word is fresh) and it *enumerates* words the DFA accepts;
+- add one disequality and run it *backward* and it enumerates words it rejects.
+
+One relation yields both the valid corpus and the adversarial corpus, so a
+hand-written generator and a hand-written checker cannot drift apart. That is the
+whole reason to reach for logic programming here rather than plain generative
+tests.
+
+This doc is for review: it states the configuration, walks the one prototype we
+have (challenge 06, the DFA), shows the diagrams, and sketches how the same shape
+applies to the next two candidates (05 login-hierarchy, 07 lr-parser).
+
+* Configuration
+
+** Toolchain
+
+- =clojure= CLI (deps.edn projects). Present on this cell (1.12).
+- =org.clojure/core.logic 1.0.1= from Maven Central. Fetched on first run; then
+  cached in =~/.m2=. First run therefore needs network.
+- =python3= for the differential eval (it reuses the reference's own code).
+- Guile was the other candidate (the user's shops use it), but it is *not
+  installed on this cell*, and =dsp-dr= has Guile patterns yet no miniKanren
+  prior art (see =experiments/003-simulator-speculation=). So the simulators are
+  Clojure + core.logic; Racket-miniKanren is the ready Scheme fallback.
+
+** Per-simulator files (challenge 06 shown)
+
+: challenges/06-dfa-even-01/simulator/
+:   deps.edn     # pins org.clojure/core.logic 1.0.1
+:   gen.clj      # the relation + a driver that prints "<accept|reject> <word>"
+:   eval.py      # folds each generated word through the REFERENCE, checks verdict
+:   run.sh       # generate corpus, then eval; green = reference agrees
+:   README.org   # what/why/run for this simulator
+
+=deps.edn= is the entire build configuration:
+
+#+begin_src clojure :eval no
+{:deps {org.clojure/core.logic {:mvn/version "1.0.1"}}}
+#+end_src
+
+** How it runs
+
+: challenges/06-dfa-even-01/simulator/run.sh
+: # => eval: 16 agree, 0 mismatch     (verified 2026-09-11)
+
+=run.sh= is:
+
+#+begin_src sh :eval no
+D=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+clojure -M "$D/gen.clj" > "$D/.words.txt" 2>/dev/null   # generate corpus
+python3 "$D/eval.py" "$D/.words.txt"                    # differential eval
+rm -f "$D/.words.txt"
+#+end_src
+
+** Versioning
+
+Simulators version on their *own* line, =sim-NN-vX.Y.Z= (git tag), independent of
+the sealed spec (=spec-vX.Y.Z=) and of the challenge. Rationale in
+=experiments/003-simulator-speculation=: the spec is the grading instrument, a
+challenge is a fixed problem, a simulator is the fastest-moving generator; each
+eval result should be stamped with the =(spec, challenge, simulator)= triple. The
+prototype is tagged =sim-06-v0.1.0=.
+
+** Clojure scratch (gitignored)
+
+=.cpcache/= (classpath cache) and =.words.txt= (the transient corpus) are
+gitignored; nothing generated is committed.
+
+* The relational core (challenge 06, the DFA)
+
+The language is {binary strings with an even number of 0s and an even number of
+1s}. State = (parity of #0, parity of #1): =EE EO OE OO=; start and only
+accepting state =EE=; reading 0 flips the 0-parity, reading 1 flips the 1-parity.
+
+The transition function is a *table of facts*, and =deltao= is membership in it:
+
+#+begin_src clojure :eval no
+(def trans '[[EE 0 OE] [EE 1 EO] [EO 0 OO] [EO 1 EE]
+             [OE 0 EE] [OE 1 OO] [OO 0 EO] [OO 1 OE]])
+
+(defn deltao [s a n] (membero [s a n] trans))          ; s --a--> n
+
+(defn runo [s w f]                    ; f = state after folding word w from s
+  (conde
+    [(== w ()) (== s f)]                               ; empty word: f = s
+    [(fresh [a d n] (conso a d w) (deltao s a n) (runo n d f))]))
+
+(defn accepto [w] (runo 'EE w 'EE))                    ; forward:  accepted words
+(defn rejecto [w] (fresh [f] (runo 'EE w f) (!= f 'EE))) ; backward: rejected words
+#+end_src
+
+=runo= is the extended transition function delta* written as a *relation*, not a
+function: none of =s=, =w=, =f= has to be ground. =accepto= pins start and final
+to =EE=; =rejecto= pins start to =EE= and constrains the final state to be
+anything but =EE=. Because core.logic's =conde= interleaves its branches (a fair
+search), running with a fresh =w= enumerates solutions of increasing length
+rather than diving down one infinite branch.
+
+The driver takes the first several of each and prints them:
+
+#+begin_src clojure :eval no
+(let [acc (->> (run 30 [w] (accepto w)) (remove empty?) distinct (take 8))
+      rej (->> (run 30 [w] (rejecto w)) (remove empty?) distinct (take 8))]
+  (doseq [w acc] (println "accept" (apply str w)))
+  (doseq [w rej] (println "reject" (apply str w))))
+#+end_src
+
+** Sample output (verified)
+
+#+begin_example
+accept 00     reject 0
+accept 11     reject 1
+accept 0000   reject 01
+accept 1100   reject 10
+accept 1001   reject 000
+accept 0101   reject 001
+accept 1010   reject 110
+accept 0110   reject 100
+#+end_example
+
+Every =accept= word has an even count of both symbols; every =reject= word does
+not. The corpus was produced by /one/ relation.
+
+** The differential eval
+
+=eval.py= does not re-implement the DFA. It imports the reference's own module
+and folds each generated word through the reference's =step/START/ACCEPT=, then
+compares the reference's accept/reject verdict to the label the relation gave the
+word. Green means the reference agrees with the independent relation on every
+generated word:
+
+: eval: 16 agree, 0 mismatch
+
+If the reference had a transition bug, some generated word would be classified
+differently by the two, and the eval would print a MISMATCH line and exit
+non-zero.
+
+* Diagrams
+
+** The DFA as a state machine
+
+#+begin_src mermaid :eval never-export
+stateDiagram-v2
+    [*] --> EE
+    EE --> OE: 0
+    EE --> EO: 1
+    EO --> OO: 0
+    EO --> EE: 1
+    OE --> EE: 0
+    OE --> OO: 1
+    OO --> EO: 0
+    OO --> OE: 1
+    note right of EE: start and only accepting state
+#+end_src
+
+** The simulator pipeline
+
+#+begin_src mermaid :eval never-export
+flowchart LR
+    R["core.logic relation<br/>deltao / runo / accepto / rejecto"]
+    R -->|"run forward (w fresh)"| A["accepted words"]
+    R -->|"run backward (!= final EE)"| J["rejected words"]
+    A --> C["labelled corpus<br/>accept/reject + word"]
+    J --> C
+    REF["reference dfa.py<br/>step / START / ACCEPT"] --> E
+    C --> E["eval.py: fold each word<br/>through the reference"]
+    E --> V{"reference verdict ==<br/>relation label?"}
+    V -->|all agree| P["green: 16 agree, 0 mismatch"]
+    V -->|any differ| F["red: reference bug (MISMATCH)"]
+#+end_src
+
+** Forward vs backward from one relation
+
+#+begin_src mermaid :eval never-export
+flowchart TB
+    REL["accepto(w) = runo(EE, w, EE)"]
+    REL -->|"w is fresh"| GEN["GENERATE: enumerate accepted words"]
+    REL2["rejecto(w) = runo(EE, w, f), f != EE"]
+    REL2 -->|"w is fresh"| ADV["GENERATE: enumerate rejected words"]
+    REL3["runo(EE, given-word, f)"]
+    REL3 -->|"w is ground"| CHK["CHECK: solve for the final state f"]
+#+end_src
+
+The point of the last diagram: the *same* =runo= relation is a generator when the
+word is a logic variable and a checker when the word is ground. That is what a
+plain function cannot do and why the generator and checker cannot disagree.
+
+* Generalizing to other challenges
+
+The speculation (=experiments/003=) ranks the next two candidates. The relations
+are sketches for review, not yet built.
+
+** 05 login-hierarchy: down-sets / order-ideals of the containment tree
+
+The projection here is an *ancestor-closed set* (an order ideal of the tree). A
+relation =downseto[node set]= holds when =set= is exactly the ancestor chain of a
+leaf. Run it forward to enumerate the *valid* projections (one per leaf); to
+generate *adversarial* projections, drop closure: enumerate ancestor-sets that
+*omit* a parent while keeping a child (a set that is not downward closed). That is
+the I1 violation for a poset, generated relationally rather than hand-built.
+
+#+begin_src clojure :eval no
+;; sketch
+(defn childo [p c] (membero [p c] containment))   ; p contains c
+(defn ancestoro [n a] (conde [(childo a n)]
+                             [(fresh [m] (childo m n) (ancestoro m a))]))
+;; valid projection of leaf L = {L} + all a with (ancestoro L a)
+;; adversarial: a set S with some c in S and its parent p NOT in S
+#+end_src
+
+** 07 lr-parser: grammar-derived shift/reduce traces
+
+The automaton's transitions are already a relation (a fact table like =trans=
+above). Run =patho[start labels end]= forward to enumerate token sequences that
+reach an accepting state (valid parses); constrain =end= to a non-accepting state
+to enumerate stuck/rejected inputs. Same forward/backward split as the DFA, over
+=(state, label, next)= facts drawn straight from the Graphviz automaton.
+
+** Where core.logic does NOT help
+
+Bulk/volume fuzzing (thousands of random logs for throughput) and challenge 09
+Raft (the interesting part is replication/timing, not a small structured corpus)
+are better served by plain generative tests. Use both; core.logic earns its keep
+on the small, structured, boundary corpus where "valid" is a crisp relation.
+
+* Relationship to the seven vocabularies
+
+The picker's seven vocabularies (Kafka, cloud messaging, relational, event
+sourcing, derived data, microservices, order theory) are the axis of /how you
+name/ log-fold-projection; the ladder's structure classes are the axis of /what
+shape/ S has. core.logic sits on the *order-theory* corner of the first axis: a
+DFA language, a poset's down-sets, and an automaton's accepted paths are all
+relations, which is exactly why the relational generator is natural here. A
+vocabulary Rosetta for the ladder (mapping each structure class to its name in
+each vocabulary) is a separate, planned spec addition; this doc only notes the
+tie-in.
+
+* Review checklist (open configuration questions)
+
+- *Network dependency.* First run fetches core.logic from Maven. For a hermetic
+  gate we would vendor the jar or pre-warm =~/.m2=. Decide whether simulators are
+  part of the gated build or an opt-in extra (currently opt-in; not run by
+  =bin/verify.sh=).
+- *Search determinism.* =run N= order depends on core.logic's search; the corpus
+  is stable in practice but not guaranteed byte-stable across versions. The eval
+  checks a /property/ (verdict agreement), not a byte-exact corpus, so this is
+  fine - but if we ever pin a corpus we must fix a seed/ordering.
+- *Length bounding.* The prototype takes the first N by interleaved search rather
+  than "all words up to length L". A =lengtho= relation would give exhaustive
+  bounded coverage; decide if that is wanted.
+- *Language.* Confirm Clojure + core.logic as the standard, with Racket-miniKanren
+  as the Scheme fallback and Guile deferred until it is installed where the gate
+  runs.
+- *Scope.* Which challenges get a simulator (05 and 07 are next); Raft likely
+  stays plain generative.
