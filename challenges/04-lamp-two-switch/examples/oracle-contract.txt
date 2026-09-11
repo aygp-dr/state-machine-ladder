@@ -1,0 +1,16 @@
+== anomalies ==
+LMP-03 T2 BothOff->On
+LMP-04 T2 WallOff->LampOff
+LMP-05 unknown_state dim
+LMP-06 null_ts WallOff
+LMP-07 dup WallOff
+LMP-08 I6 WallOff before On
+== current state ==
+LMP-01 BothOff
+LMP-02 BothOff
+LMP-03 On
+LMP-04 LampOff
+LMP-05 BothOff
+LMP-06 WallOff
+LMP-07 WallOff
+LMP-08 On

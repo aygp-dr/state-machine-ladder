@@ -5,9 +5,9 @@
 #+PROPERTY: header-args :mkdirp t
 #+STARTUP: overview
 
-[[./bin/verify.sh][https://img.shields.io/badge/reference-3%2F9_solved-yellow.svg]]
+[[./bin/verify.sh][https://img.shields.io/badge/reference-4%2F9_solved-yellow.svg]]
 [[./challenges][https://img.shields.io/badge/challenges-9-blue.svg]]
-[[./spec.org][https://img.shields.io/badge/spec-v2.2.0-blue.svg]]
+[[./spec.org][https://img.shields.io/badge/spec-v2.3.0-blue.svg]]
 [[./.meta][https://img.shields.io/badge/method-spec--driven_%C2%B7_EDD-77aa99.svg]]
 [[./README.org][https://img.shields.io/badge/cell-FreeBSD_amd64-orange.svg]]
 
@@ -27,7 +27,7 @@ problem: /a state machine is a deterministic function of its log/.
 | 1 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/01-order-lifecycle][order-lifecycle]] | chain (total order) | 1 | reference | *solved* |
 | 2 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/02-traffic-light][traffic-light]] | 3-cycle | 2 | classic / TLA+ | *solved* |
 | 3 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/03-elevator][elevator]] | product + request set | 4 | classic | *solved* |
-| 4 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/04-lamp-two-switch][lamp-two-switch]] | reversible graph ({0,1}^2) | 3 | learntla | open |
+| 4 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/04-lamp-two-switch][lamp-two-switch]] | reversible graph ({0,1}^2) | 3 | learntla | *solved* |
 | 5 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/05-login-hierarchy][login-hierarchy]] | containment poset (tree) | 4 | learntla | open |
 | 6 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/06-dfa-even-01][dfa-even-01]] | complete DFA (cyclic) | 5 | Hopcroft | open |
 | 7 | [[https://github.com/aygp-dr/state-machine-ladder/tree/main/challenges/07-lr-parser-fsm][lr-parser-fsm]] | LR automaton + stack | 6 | Graphviz gallery | open |

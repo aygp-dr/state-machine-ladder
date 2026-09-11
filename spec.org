@@ -6,8 +6,8 @@
 
 * Status
 
-- Version: =2.2.0=
-- Status: SEALED at v2.2.0 - frozen; any change requires a new version + re-seal
+- Version: =2.3.0=
+- Status: SEALED at v2.3.0 - frozen; any change requires a new version + re-seal
 - Date: 2026-09-10
 - Supersedes: =1.1.0= (the copied picker-state-projection /generator/ recipe - a
   source-derivation-view /bootstrapper/ scoped mostly to the simple linear chain).
@@ -357,10 +357,12 @@ Each row is frozen by an annotated git tag; the tag message records
 | 2.0.2   | 2026-09-11 | =spec-v2.0.2= | typographic: purge remaining non-ASCII slop glyphs (em/en dash, delta, math/set symbols); keep section-sign; no semantic change |
 | 2.1.0   | 2026-09-11 | =spec-v2.1.0= | realize challenge 02 traffic-light (cyclic FSM; current-state + transition-legality projection; green gate) |
 | 2.2.0   | 2026-09-11 | =spec-v2.2.0= | realize challenge 03 elevator (product state floor x doors + request set; physical invariants; green gate) |
+| 2.3.0   | 2026-09-11 | =spec-v2.3.0= | realize challenge 04 lamp-two-switch (reversible hypercube Q2; toggle-legality; green gate) |
 | 1.1.0   | 2026-09-10 | =spec-v1.1.0= | (superseded - copied picker generator) the source-derivation-view bootstrapper + =bin/new-exercise=; P1 audience-framing rule |
 
 * Changelog
 
+- =2.3.0= (2026-09-11) - realize challenge 04 (lamp-two-switch): reversible graph on {0,1}^2 (hypercube Q2), reference under challenges/04-lamp-two-switch checking that each toggle flips exactly one switch (spec sec 2.2). Oracle pinned, green gate.
 - =2.2.0= (2026-09-11) - realize challenge 03 (elevator): product state (floor 1..N x doors) + pending-request set, reference under challenges/03-elevator checking adjacency, doors-closed-while-moving, range, and serve rules (spec sec 2.2). Oracle pinned, green gate.
 - =2.1.0= (2026-09-11) - realize challenge 02 (traffic-light): first non-chain structure class. Cyclic-FSM reference under challenges/02-traffic-light (current-state + transition-legality projection, spec sec 2.2), oracle pinned, green via its gate.
 - =2.0.2= (2026-09-11) - typographic only: purge the remaining non-ASCII glyphs
