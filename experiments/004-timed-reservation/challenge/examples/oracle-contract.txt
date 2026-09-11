@@ -1,0 +1,35 @@
+== structure ==
+resource cyclic=available,in-service,maintenance,out-of-order terminal=retired
+reservation cyclic=- terminal=cancelled,completed,expired,no-show live=active,confirmed,held,overdue
+== anomalies ==
+R1 I6 RES-02 cancel before RES-06 request
+R1 I7 RES-02 [2026-09-11T09:30:00Z,2026-09-11T10:30:00Z) overlaps RES-01 [2026-09-11T09:00:00Z,2026-09-11T10:00:00Z)
+R1 T2 RES-14 held->active (check_in)
+R1 X1 RES-13 expire due 2026-09-11T12:20:05Z unwritten at watermark 2026-09-11T12:25:00Z
+R1 dup RES-11 no_show
+R1 unknown_event RES-14 extend
+R2 C2 RES-05 confirmed on out-of-order without compensation
+R2 F1 RES-03 check_out token 2 fence 3
+R2 null_ts RES-05 confirm
+R3 C1 RES-07 hold while maintenance
+R3 T2 resource retired->available (commission)
+== resources ==
+R1 available class=small fence=2
+R2 out-of-order class=small fence=3
+R3 available class=large fence=2
+== reservations ==
+RES-01 completed booked=R1 key=R1 [2026-09-11T09:00:00Z,2026-09-11T10:00:00Z) token=1
+RES-02 cancelled booked=R1 key=R1 [2026-09-11T09:30:00Z,2026-09-11T10:30:00Z) token=-
+RES-03 completed booked=small key=R2 [2026-09-11T10:30:00Z,2026-09-11T11:30:00Z) token=2
+RES-04 completed booked=R2 key=R2 [2026-09-11T11:30:00Z,2026-09-11T12:00:00Z) token=3
+RES-05 confirmed booked=R2 key=R2 [2026-09-11T13:00:00Z,2026-09-11T14:00:00Z) token=-
+RES-06 completed booked=R1 key=R2 [2026-09-11T10:00:00Z,2026-09-11T10:30:00Z) token=1
+RES-07 completed booked=R3 key=R3 [2026-09-11T09:30:00Z,2026-09-11T10:30:00Z) token=1
+RES-10 expired booked=R1 key=R1 [2026-09-11T11:45:00Z,2026-09-11T12:15:00Z) token=-
+RES-11 no-show booked=R1 key=R1 [2026-09-11T11:00:00Z,2026-09-11T11:30:00Z) token=-
+RES-12 completed booked=R3 key=R3 [2026-09-11T10:30:00Z,2026-09-11T11:00:00Z) token=2
+RES-13 held booked=R1 key=R1 [2026-09-11T12:30:00Z,2026-09-11T13:00:00Z) token=-
+RES-14 completed booked=R1 key=R1 [2026-09-11T11:30:00Z,2026-09-11T12:00:00Z) token=2
+== live intervals ==
+R1 RES-13 held [2026-09-11T12:30:00Z,2026-09-11T13:00:00Z)
+R2 RES-05 confirmed [2026-09-11T13:00:00Z,2026-09-11T14:00:00Z)

@@ -1,0 +1,226 @@
+#+TITLE: 004/challenge - timed reservation (conference rooms)
+#+STARTUP: showall
+* Status
+PROPOSAL, challenge-shaped. It lives inside experiment 004 and is not a ladder
+challenge. It is not wired into the root =bin/verify.sh=. The ladder owner
+decides whether it becomes =challenges/10-timed-reservation/= (see
+[[../README.org][../README.org]]). The theory is in [[../proposed-spec-2.9.org][../proposed-spec-2.9.org]].
+* Difficulty
+5 / 8 (proposed rung 10). Two coupled machines, a cycle and a DAG, share a
+resource key. On top of them sit a time axis and a cross-entity interval
+invariant.
+* Provenance
+The user's theory note "timed reservation over a resource" (2026-09-11),
+conference-room row: booked, checked in, released for no-show, with
+auto-release 10 min after a no-show. The distributed-lock-lease row supplies the
+fencing token. The restaurant and car-rental rows supply late binding.
+* The machines
+** Resource lifecycle R (a room) - a cycle (spec sec 2.2)
+States =acquired, available, in-service, maintenance, out-of-order, retired=.
+Initial =acquired=, sole terminal =retired=. The states =available, in-service,
+maintenance, out-of-order= lie on cycles, for example =available -> maintenance ->
+available=, so there is no sound wide-flag view. The projection is current_state
+plus transition-legality.
+
+| from         | event      | to           | writer             |
+|--------------+------------+--------------+--------------------|
+| acquired     | commission | available    | operator           |
+| available    | check_in   | in-service   | party              |
+| in-service   | check_out  | available    | party/operator     |
+| available    | maintain   | maintenance  | scheduler/operator |
+| out-of-order | maintain   | maintenance  | scheduler/operator |
+| maintenance  | restore    | available    | scheduler/operator |
+| out-of-order | restore    | available    | scheduler/operator |
+| available    | fault      | out-of-order | operator           |
+| in-service   | fault      | out-of-order | operator           |
+| available    | retire     | retired      | operator           |
+| maintenance  | retire     | retired      | operator           |
+| out-of-order | retire     | retired      | operator           |
+
+** Reservation lifecycle V (a booking) - a DAG with terminals (spec sec 2.4)
+States =requested, held, confirmed, active, overdue, completed, cancelled,
+expired, no-show=. The graph is acyclic. Its terminals are =completed, cancelled,
+expired, no-show=. =overdue= is a live, non-terminal exit: it still holds the
+room, and it ends at =check_out=.
+
+| from              | event     | to                               | writer         |
+|-------------------+-----------+----------------------------------+----------------|
+| (none)            | request   | requested                        | party          |
+| requested         | hold      | held                             | party          |
+| requested         | cancel    | cancelled                        | party/operator |
+| requested         | expire    | expired                          | scheduler      |
+| held              | confirm   | confirmed                        | party          |
+| held              | cancel    | cancelled                        | party/operator |
+| held              | expire    | expired                          | scheduler      |
+| confirmed         | check_in  | active                           | party          |
+| confirmed         | cancel    | cancelled                        | party/operator |
+| confirmed         | no_show   | no-show                          | scheduler      |
+| active            | check_out | completed                        | party/operator |
+| active            | overdue   | overdue                          | scheduler      |
+| overdue           | check_out | completed                        | party/operator |
+| confirmed, held   | reassign  | (unchanged; key := new instance) | operator       |
+
+=check_in= and =check_out= are *shared events* of both machines, so the product is
+synchronous: one event moves the booking and the room. =reassign= changes the
+booking's resource key without changing its V state, so it is not a V edge.
+
+** Coupling rule
+LIVE = {held, confirmed, active, overdue}; AVAILABLE = {available, in-service}.
+For every booking v bound to a room r, if v is LIVE then r is AVAILABLE.
+=in-service= counts as reservable because an occupied room still carries live
+bookings for later intervals.
+
+- *C1* (at admission): =hold=, =reassign=, or a late-binding =check_in= onto a
+  room outside AVAILABLE. The write side should have rejected it.
+- *C2* (at the watermark): a live booking stranded on a room that left AVAILABLE
+  on its own clock (a =fault= or =maintain=) with no compensation. Compensation
+  is an operator =reassign=, an operator =cancel=, or the room returning to
+  AVAILABLE.
+
+** Interval invariant (interval scheduling)
+*I7*: on each room, the booked intervals =[start, end)= of the LIVE bookings are
+pairwise disjoint. It is checked at admission. It relates /two/ bookings that
+share a key, so no per-entity flag or down-set can express it.
+
+** Time axis
+The fold takes no clock. Deadlines are policy constants. The *scheduler writes*
+the event that discharges each deadline into the log:
+
+| live state | deadline         | scheduler event | edge                 |
+|------------+------------------+-----------------+----------------------|
+| held       | hold.ts + 15 min | expire          | held -> expired      |
+| confirmed  | start + 10 min   | no_show         | confirmed -> no-show |
+| active     | end + 0 min      | overdue         | active -> overdue    |
+
+The fold's only "now" is the *watermark*: the maximum event-time in the log.
+*X1* reports a live booking whose deadline is at or before the watermark and has
+no scheduler event. The fold reports that absence and never writes the missing
+event.
+
+** Fencing and late binding
+- *F1*: each room keeps =fence= (initially 0), the highest token it has accepted.
+  =check_in= must carry a token greater than the fence, and then sets the fence to
+  it. =check_out= must carry the current fence. Any other token is fenced: the
+  event is rejected, reported, and not applied.
+- *Late binding*: a booking may be made against a class key (=small=) and bound
+  to an instance at =check_in=. *B1* fires if the instance is not of the booked
+  class. The view keeps =booked= (the key at request) and =key= (the current key).
+
+* The log
+=data/trace/reservation_log.csv= is in arrival order. Room and booking events
+interleave, and each row is keyed by =resource=.
+
+| column      | meaning                                                             |
+|-------------+---------------------------------------------------------------------|
+| ts          | event time (ISO 8601, UTC)                                          |
+| resource    | partition key: a room (=R1=..=R3=) or a class key (=small=)         |
+| reservation | booking id (=RES-NN=); empty for room-only events                   |
+| event       | one of the event names in the two tables                            |
+| source      | =party=, =scheduler= or =operator= (S1 checks it against =writer=) |
+| class       | the room's class on =commission=; the booked class on =request=     |
+| start, end  | the booked interval, on =request= only                              |
+| token       | fencing token, on =check_in= / =check_out= only                     |
+
+* What to implement
+Fold the log into:
+1. the structure verdicts, computed from the edge tables;
+2. the anomaly list, sorted as =(resource key, inv, detail)=;
+3. per room: current_state, class and fence;
+4. per booking: current_state, booked key, current key, interval and token;
+5. per room: the live intervals.
+
+Check in this order: the schema gate (=unknown_event=, =dup=, =null_ts=), I6,
+S1, F1, T2 (both machines), then B1, C1 and I7 at admission, then X1 and C2 at
+the watermark.
+
+* Planted defects (one per invariant)
+| finding                                                  | where                                                   | lesson                                              |
+|----------------------------------------------------------+---------------------------------------------------------+-----------------------------------------------------|
+| =R1 I7 RES-02 ... overlaps RES-01 ...=                   | two holds 1 s apart on R1                               | contention: admission was not transactional (E14)   |
+| =R3 C1 RES-07 hold while maintenance=                    | hold during R3's scheduled cleaning                     | coupling at admission                               |
+| =R1 T2 RES-14 held->active (check_in)=                   | check-in without confirm                                | illegal edge in V                                   |
+| =R3 T2 resource retired->available (commission)=         | a retired room re-commissioned                          | illegal edge in R (retired is terminal)             |
+| =R2 F1 RES-03 check_out token 2 fence 3=                 | retried check_out after RES-04 took the room            | stale holder fenced (E15)                           |
+| =R1 I6 RES-02 cancel before RES-06 request=              | straggler on the R1 key                                 | arrival vs event time                               |
+| =R2 C2 RES-05 confirmed on out-of-order ...=             | R2 faults under a confirmed booking, no compensation    | two clocks (E13)                                    |
+| =R1 X1 RES-13 expire due ... unwritten at watermark ...= | hold TTL passed, scheduler silent                       | expiry is an event (E11)                            |
+| =R1 dup RES-11 no_show=                                  | scheduler delivered no_show twice                       | at-least-once scheduler + dedup (E3/E6)             |
+| =R1 unknown_event RES-14 extend=                         | =extend= is not in the vocabulary                       | schema gate; extension = a new interval admission   |
+| =R2 null_ts RES-05 confirm=                              | missing event time                                      | schema gate                                         |
+
+*Controls* (no finding): RES-10 is released by a scheduler =expire=. RES-11 is
+released by a scheduler =no_show=. RES-12 goes =active -> overdue -> completed=.
+RES-03 is booked against =small= and binds late to R2 at check-in. RES-06 is
+stranded by R1's fault and compensated by an operator =reassign= to R2. R3 runs
+maintenance on its own clock. The fence advances monotonically on every room.
+S1 and B1 are not planted; the mutants below exercise them.
+
+* Acceptance
+Reproduce =examples/oracle-contract.txt= byte-exact. It has five sections:
+=structure=, =anomalies=, =resources=, =reservations=, =live intervals=. The gate
+is =bin/verify.sh=, a verbatim copy of the ladder's per-challenge gate. The
+experiment gate [[../bin/verify.sh][../bin/verify.sh]] also runs the mutants.
+
+* Negative test (verify the verifier)
+Each mutant copies this directory, mutates one row of the trace, and runs this
+gate. The gate must FAIL.
+
+| mutant                 | mutation                                   | caught by                                                                                       |
+|------------------------+--------------------------------------------+-------------------------------------------------------------------------------------------------|
+| drop-scheduler-expire  | delete RES-10's scheduler =expire=         | X1 on RES-10, and a phantom I7 when RES-14 is admitted over the still-live RES-10               |
+| flip-fencing-token     | RES-04 check_in token 3 -> 2               | F1 on RES-04's check_in; then RES-03's stale retry is accepted (T2 completed->completed)       |
+| drop-compensation      | delete the operator =reassign= of RES-06   | B1 (check_in on R2, bound to R1)                                                                |
+| forge-no-show-by-party | the scheduler's =no_show= written by party | S1 (a party cannot author an expiry)                                                            |
+| drop-late-binding      | RES-03 checks in on R1 (faulted) not R2    | C1, I7 (against RES-11), resource T2 out-of-order->in-service, then a cascade of F1/T2 on R1   |
+
+A missing expiry event does not just leave one booking stale. Every later
+admission on that resource then sees phantom contention. That is why expiry
+has to be an event in the log, and why the fold must not reconstruct it
+privately.
+
+Result (2026-09-11, FreeBSD 15.1 amd64, python3.12): all five mutants killed,
+and the reference passes. Reproduce with =../bin/verify.sh=.
+
+* The examples table (from the user's note, trimmed)
+Three columns of the user's 14-row table, with the /invariant worth stealing/
+kept verbatim, plus where each row shows up here.
+
+| domain                     | resource                    | the invariant worth stealing (verbatim)                                                                                       | here                                   |
+|----------------------------+-----------------------------+-------------------------------------------------------------------------------------------------------------------------------+----------------------------------------|
+| library book               | one physical copy           | a hold queue is a reservation without an interval; it converts to an interval on pickup                                       | not modelled (=requested= has no claim) |
+| conference room            | room                        | no-show release is an expiry driven by absence of an event, so the fold needs a clock                                         | this fixture; the clock lives in the scheduler (X1) |
+| hotel room                 | room                        | two machines coupled through "vacant clean," which is a resource state that a reservation transition requires                | coupling C, shared =check_in=          |
+| airline seat               | seat on a flight leg        | reservations may exceed capacity by policy, so the invariant is a soft bound with a compensation state                        | open: I7 as a soft bound               |
+| restaurant table           | table, or a party size class | the resource is fungible within a class, so the reservation binds to a class first and an instance late                     | late binding, B1                       |
+| car rental                 | vehicle class, then a vehicle | same late binding as tables; plus one-way rentals move the resource between pools                                           | late binding; pools not modelled       |
+| event ticket               | seat in a venue map         | the seat lock is a lease; contention is the design driver                                                                     | =held= + I7 at admission               |
+| clinic appointment         | provider slot               | slots are generated from a template, so the resource set itself is derived data                                               | not modelled                           |
+| DHCP lease                 | IP address in a pool        | the cleanest timed reservation in computing: the protocol is the state machine, and "conflict detected" is the resource manager overriding the reservation | stretch variant (below)     |
+| distributed lock lease     | a named lock                | fencing tokens are the answer to stale holders; the reservation carries a monotone version                                    | F1                                     |
+| cloud capacity reservation | EC2 capacity in an AZ       | reservation and utilization are separate states; a reserved-but-idle resource is a first-class, paid state                    | =confirmed= is LIVE without occupancy  |
+| lab instrument / tool crib | one instrument              | two clocks: one on the reservation, one on the resource                                                                       | C2 (R's own clock)                     |
+| dock appointment (WMS)     | dock door                   | ties straight to the picker packet; a door is a resource and a trailer is a reservation                                       | same shape                             |
+| inventory allocation       | quantity of a SKU at a location | this is the picker packet's =allocated= state seen from the resource's side; the picker chain was one reservation's lifecycle | backward link (below)          |
+
+* Variants
+- *Stretch: DHCP lease (RFC 2131, figure 5).* This is the tightest instance: a
+  published state machine with explicit timers, a resource manager that can
+  revoke, and no domain knowledge needed. The client states
+  (INIT/SELECTING/REQUESTING/BOUND/RENEWING/REBINDING) map onto V. T1, T2 and
+  lease expiry are scheduler events. "Conflict detected" (DHCPDECLINE) is R
+  leaving AVAILABLE under a live lease, which is C2 and needs compensation. The
+  stretch is to re-tell this fixture over an address pool.
+- *Backward link: inventory allocation.* The picker's =allocated= state was
+  already a reservation (spec sec 2.1 / challenge 01). A quantity-at-location
+  is the resource, and the picker chain is one reservation's lifecycle. With
+  several allocations against one on-hand quantity, I7 becomes a capacity sum
+  instead of pairwise disjointness. The invariant is still cross-entity.
+- *Downstream instance*: =aygp-dr/display-reservation=.
+
+* The lesson
+A reservation system is two machines plus time. Each machine alone is an
+earlier rung: R is a cycle (sec 2.2) and V is a DAG (sec 2.4). The interval
+invariant is new. It relates entities to each other over time, so the right
+projection is per resource: the set of live intervals, both current_state
+columns, and the coupling check. Time enters the log as scheduler-written
+events, never as a clock argument to the fold.

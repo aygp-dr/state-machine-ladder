@@ -1,0 +1,201 @@
+#+TITLE: Timed reservation over a resource - a proposed rung
+#+SUBTITLE: EDD 004 - conjecture, refutation test, and a green self-contained gate; the ladder owner decides adoption
+#+OPTIONS: toc:2 num:t ^:nil
+#+PROPERTY: header-args :mkdirp t
+#+STARTUP: overview
+
+* Purpose
+
+This is a PROPOSAL. It changes nothing in =spec.org=, =README.org=,
+=bin/verify.sh= or =challenges/=. Those belong to the ladder owner, who decides
+whether a reservation rung ever enters the ladder. Everything the rung needs
+lives in this directory:
+
+| path                       | what                                                                                        |
+|----------------------------+---------------------------------------------------------------------------------------------|
+| =proposed-spec-2.9.org=    | the rung in the ladder's (a)-(d) format, plus the sec 2.8 row, the E11-E15 probes, and the rubric, sec 4, sec 5, Seals and Changelog lines |
+| =proposed-spec.patch=      | the same text as a purely additive, zero-context diff against =spec.org= at =spec-v2.8.0= (review only, never applied) |
+| =bin/make-patch.py=        | regenerates the patch from the proposal                                                     |
+| =challenge/=               | a challenge-shaped subtree: README, trace, reference fold, pinned oracle, per-challenge gate |
+| =bin/verify.sh=            | the experiment gate (below); *not* wired into the root gate                                 |
+
+The state of the world when this was written: the spec was drafted against
+=spec-v2.4.0=, with challenges 01-05 solved. It was rebased onto =spec-v2.8.0=,
+after the owner's session solved 06-09 and the ladder reached 9/9. The section
+structure of =spec.org= did not change between the two, so the proposal
+re-targeted cleanly. Only the proposed version moved, from 2.5.0 to *2.9.0*.
+
+* Inputs
+
+- The user's theory note, "timed reservation over a resource" (2026-09-11),
+  which is the canonical input. It gives the two machines and their state
+  names, the coupling rule, the non-overlap interval constraint, the 14-domain
+  examples table, and the four points the picker packet lacks: expiry without
+  an event, late binding to a class, two clocks, and contention.
+- =spec.org= at =spec-v2.4.0=
+  (sha256 =88654eb635fd4d04785aef999046c7182297d091188be9013e5c67e2c9ee51fc=),
+  re-checked at =spec-v2.8.0=
+  (sha256 =78e8179a2d43a368bbcd5a4693abe1b4b002ae5c69ace70442c160738e31923b=).
+- The patterns: =challenges/02-traffic-light= and =challenges/05-login-hierarchy=.
+  The per-challenge gate is copied verbatim from them. Also =.meta/methodology.org=,
+  =.meta/vocabulary.org=, and =experiments/003= for the shape.
+
+* Conjecture
+
+*H*: a timed reservation over a resource fits the ladder as one more structure
+class, sec 2.9, without touching the sec 1 core pattern:
+
+1. Each of the two machines is a class the ladder already has. The resource
+   lifecycle R is a sec 2.2 cycle. The reservation lifecycle V is a sec 2.4 DAG
+   with terminals. Both claims can be decided from the edge tables alone.
+2. The one genuinely new invariant is interval non-overlap (I7). It is
+   cross-entity, a relation between reservations that share a key, so the
+   flag / down-set projection cannot express it. The right projection is, per
+   resource, the set of live intervals plus both current_state columns plus a
+   coupling check.
+3. Time enters without breaking the pure fold. Expiry, no-show and overdue are
+   events a scheduler writes into the log. The fold stays =[Event] -> View=. Its
+   only "now" is the log's own watermark, and it uses that only to report a
+   missed deadline, never to synthesize one.
+
+* What would refute it
+
+- The oracle's =structure= section, computed from the edge tables, shows R
+  acyclic or V cyclic.
+- A planted defect needs a clock argument: some finding cannot be computed from
+  the log alone. Gate 4 greps the fold for any clock read.
+- The gate cannot tell a wrong log from the right one: a mutant survives.
+- The prose and the code disagree about a canonical table. Gate 2 checks every
+  row the fold is built from verbatim against =proposed-spec-2.9.org=.
+
+*Result: not refuted* on the supported cell. R computes as cyclic on
+={available, in-service, maintenance, out-of-order}= with terminal =retired=. V
+computes as acyclic with terminals ={cancelled, completed, expired, no-show}=.
+All four gates pass, and all five mutants are killed.
+
+* Success criterion and observed result
+
+| criterion                                                              | observed (2026-09-11, FreeBSD 15.1 amd64, python3.12)          |
+|------------------------------------------------------------------------+----------------------------------------------------------------|
+| reference reproduces the pinned oracle byte-exact                      | PASS (=challenge/bin/verify.sh=)                               |
+| one planted defect per invariant, each isolated to exactly one finding | 11 findings: I6 I7 T2(V) T2(R) X1 dup unknown_event C2 F1 null_ts C1 |
+| canonical tables in the proposal == tables the fold uses                | PASS (gate 2); negative-tested: flipping one writer cell FAILs |
+| every mutant killed                                                    | 5/5 killed (gate 3)                                            |
+| the fold reads no clock                                                | PASS (gate 4)                                                  |
+| ASCII only                                                             | =rg -n '[^\x00-\x7F]' experiments/004-timed-reservation= -> none |
+| the proposal applies to the current spec                               | =git apply --check --unidiff-zero proposed-spec.patch= -> clean |
+
+* What could go wrong / known limits
+
+These are stated so they are not mistaken for coverage:
+- *Capacity > 1* is not modelled: airline overbooking as a soft bound, or an
+  inventory quantity. I7 would generalize from pairwise disjointness to a
+  capacity sum.
+- *Active or overdue reservations under a fault* have no in-model compensation.
+  =reassign= is legal only from =held= / =confirmed=. C2 reports the stranded
+  reservation, but the only way to discharge it is the resource returning to
+  AVAILABLE. See decision D9.
+- *X1 is evaluated at the watermark only*, not at every event. Suppose a party
+  event arrives after a missed deadline, such as a =check_in= after the no-show
+  window with no =no_show= written. It is accepted, and the booking leaves the
+  state whose deadline passed. See decision D8.
+- *Class-level admission* (the capacity of a class over an interval) is not
+  checked. A class-keyed reservation is checked when it binds, by C1, I7 and B1.
+- *Recurrence*, the conference-room "recurring instance", is not modelled.
+- *One language.* Only the Python reference exists; the ladder's re-tell
+  fan-out has not been done.
+- *This cell ships only =python3.12=, with no =python3=.* The ladder's own
+  =run.sh= files call =python3=, so the root gate reports FAIL=9 here (FAIL=5 at v2.4.0) for that
+  reason alone. With a =python3 -> python3.12= PATH shim it is PASS=9 on
+  origin/main. This experiment's =run.sh= falls back to =python3.12=.
+
+* Decision points for the ladder owner
+
+| #   | decision                                                                                          | this proposal's choice                                                     |
+|-----+---------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------|
+| D1  | adopt at all: as sec 2.9 plus challenge 10, or keep it as an experiment                           | proposed; owner's call                                                     |
+| D2  | numbering: a new sec 2.9 before the 2.8 at-a-glance table, and challenge 10                       | as proposed; renumbering 2.8 -> 2.9 is equally fine                         |
+| D3  | version                                                                                           | =2.9.0= (MINOR: additive, admits a class); seal by the owner at merge      |
+| D4  | =overdue=: live and non-terminal (ends at =check_out=), or terminal                               | live, non-terminal (library / car-rental semantics)                        |
+| D5  | AVAILABLE = {available, in-service}                                                               | yes: an occupied room still carries later live bookings                    |
+| D6  | =check_in= / =check_out= as shared events (synchronous product), or separate occupy/vacate events | shared events                                                              |
+| D7  | when the fencing token is issued                                                                  | at =check_in= (acquisition of the resource), checked at =check_out=         |
+| D8  | X1 at the watermark only, or also at each event (the log's event-time high-water mark)            | watermark only (smaller, sufficient for the fixture)                       |
+| D9  | compensation for =active= / =overdue= under a fault                                               | open; candidates: an operator =check_out= whose resource side is a no-op, or an active reassign |
+| D10 | the writer table (S1) as spec content, or write-side only                                         | spec content: it is where "the scheduler writes expiry" becomes checkable  |
+| D11 | re-tell languages (KS/MQ/RA/ES/DD/EM/OT)                                                          | not done                                                                   |
+
+* How to adopt (if the owner says yes)
+
+1. =git mv experiments/004-timed-reservation/challenge challenges/10-timed-reservation=
+   and fix its README links. The root =bin/verify.sh= enumerates =challenges/*=,
+   so it needs no change.
+2. =git apply --unidiff-zero experiments/004-timed-reservation/proposed-spec.patch=.
+   Optionally convert "sec" to the section sign. Then set Version/Status to
+   2.9.0 and fill the Seals date.
+3. Add the root =README.org= ladder row 10 and update the badges.
+4. Keep or drop gate 2 (table agreement). If the tables move into =spec.org=,
+   point it there.
+5. Seal: the annotated tag =spec-v2.9.0= recording =sha256(spec.org)=. This is
+   the owner's step.
+
+* Reproduction
+
+#+begin_src sh :eval no
+cd experiments/004-timed-reservation
+challenge/bin/verify.sh                         # gate 1 alone
+TMPDIR=/scratch/work/tmp bin/verify.sh          # gates 1-4 (mutants use $TMPDIR)
+challenge/examples/reference/run.sh --tables    # the canonical tables
+git show spec-v2.8.0:spec.org > "$TMPDIR/spec.org"
+python3.12 bin/make-patch.py "$TMPDIR/spec.org" | cmp - proposed-spec.patch
+git -C ../.. apply --check --unidiff-zero experiments/004-timed-reservation/proposed-spec.patch
+#+end_src
+
+Observed on FreeBSD 15.1-RELEASE amd64 (jail =claude-clojure=, python3.12):
+
+#+begin_example
+== 1. challenge gate ==
+reference        PASS
+------------------------------------
+PASS=1 FAIL=0
+== 2. spec/code table agreement ==
+tables           PASS
+== 3. negative test: every mutant must be killed ==
+drop-scheduler-expire      killed
+flip-fencing-token         killed
+drop-compensation          killed
+forge-no-show-by-party     killed
+drop-late-binding          killed
+== 4. purity: the fold takes no clock argument ==
+purity           PASS
+------------------------------------
+EXPERIMENT 004 PASS
+#+end_example
+
+* Timeline
+
+- 2026-09-11: Read the note and the ladder (=spec.org= at v2.4.0, methodology,
+  vocabulary, =bin/new-exercise=, challenges 01/02/05, experiment 003). The
+  first plan was an in-ladder rung (sec 2.9 plus =challenges/10=). The scope
+  changed to a self-contained experiment so the owner session's files are not
+  touched. =bin/new-exercise= stamps a whole repo, so it did not fit a
+  subdirectory; the tree was built by hand in the 02/05 shape.
+- 2026-09-11: Design decisions (see D4-D10): shared =check_in= / =check_out=,
+  AVAILABLE including =in-service=, a non-terminal =overdue=, fencing at
+  acquisition, and every event with exactly one target state, so an illegal
+  step is still applied: the log is truth and the projector reports.
+- 2026-09-11: Wrote the trace and the fold. The first run matched the predicted
+  11 findings exactly, and the oracle was pinned from that run. The =writer=
+  cells first used =|= and broke org tables, so they were switched to =/=.
+- 2026-09-11: Gate 2 ran before the proposal existed and FAILed on every row,
+  an accidental negative test. Later a deliberate one: flipping a single writer
+  cell in a copy of the proposal FAILs gate 2.
+- 2026-09-11: Checked each mutant's diff to confirm it is killed for the stated
+  reason. Dropping RES-10's =expire= also produces a *phantom I7* when RES-14 is
+  admitted, and that is now recorded in =challenge/README.org=.
+- 2026-09-11: Found origin/main at =spec-v2.8.0= (06-09 solved, ladder 9/9) and
+  2.5.0 taken. Fast-forwarded the branch, re-anchored =make-patch.py=,
+  regenerated the patch against v2.8.0, and bumped the proposal to 2.9.0.
+- 2026-09-11: The root gate on this cell FAILs every solved challenge (5 at v2.4.0, 9 at v2.8.0) because
+  there is no =python3= binary; it is green with a shim. Nothing in the root
+  gate was touched.
