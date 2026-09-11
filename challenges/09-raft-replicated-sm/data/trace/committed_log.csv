@@ -1,0 +1,7 @@
+idx,op,key,val
+1,set,x,10
+2,set,y,20
+3,set,x,15
+4,del,y,
+5,set,z,30
+6,set,y,42

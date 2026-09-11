@@ -1,0 +1,18 @@
+== role anomalies ==
+NODE-3 unknown_event bogus_event
+NODE-4 T2 follower:win
+NODE-5 null_ts timeout
+NODE-6 I6 higher_term
+NODE-6 dup timeout
+== node roles ==
+NODE-1 role=leader
+NODE-2 role=follower
+NODE-3 role=follower
+NODE-4 role=follower
+NODE-5 role=candidate
+NODE-6 role=follower
+== applied state ==
+key=x val=15
+key=y val=42
+key=z val=30
+replicas_agree=yes
