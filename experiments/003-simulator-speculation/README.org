@@ -1,0 +1,380 @@
+#+TITLE: Generative Log Simulators and Build Versioning - A Speculation
+#+SUBTITLE: EDD 003 - decision-useful conjecture, not a final design
+#+AUTHOR: Aidan Pace
+#+OPTIONS: toc:2 num:t ^:nil
+#+PROPERTY: header-args :mkdirp t
+#+STARTUP: overview
+
+* Purpose
+
+This is a SPECULATION document. It does not change =spec.org=, =README.org=,
+or any =challenges/*=. It proposes (1) a versioning scheme for the build as
+challenges are solved and generative simulators are added; (2) a per-challenge
+assessment of whether each of the 9 challenges should get a generative log
+simulator and what evaluation that unlocks; (3) an analysis of where
+miniKanren / core.logic genuinely helps versus plain generative testing; and
+(4) a language recommendation (Clojure vs Guile Scheme) grounded in what is
+actually installed here and what prior art exists under dsp-dr.
+
+The intent is to be decision-useful: give the human and the main agent a
+concrete scheme to accept, amend, or reject, plus a small first-step proposal.
+
+Nothing here is sealed. The spec is the authority; simulators are downstream
+tooling and must never be read as re-defining an invariant.
+
+State of the world at time of writing:
+- Spec sealed at =spec-v2.1.0= (sha256 in the tag message).
+- Two challenges solved: =01-order-lifecycle= (chain) and =02-traffic-light=
+  (cycle). Seven remain: elevator, lamp, login-hierarchy, dfa-even-01,
+  lr-parser-fsm, register-machine, raft-replicated-sm.
+- Convention observed: one MINOR spec bump per solved challenge
+  (v2.0.x patch history, then v2.1.0 as challenge 02 landed).
+
+* 1 Versioning proposal
+
+** The problem
+
+Three things change at different rates and for different reasons:
+
+1. The *spec* (=spec.org=) - the shared theory (fold + projection, invariants,
+   down-set characterization). Rarely changes; changes ripple to everything.
+2. A *challenge* - its parameter table, oracle contract, and reference data.
+   Changes when a challenge is authored or a defect set is revised.
+3. A *simulator* - the generator/grammar that emits logs for a challenge.
+   Changes most often (new defect injections, tuned distributions, bug fixes).
+
+Overloading one semver line for all three is the failure mode: a simulator bug
+fix must not look like a spec change, and solving a new challenge must not
+force a simulator re-tag.
+
+** Proposed scheme: three independent version lines, composed by reference
+
+Keep the existing spec line exactly as is. Add two more, each with its own tag
+namespace, and record cross-line dependencies as data, not as shared numbers.
+
+*** Spec line (unchanged)
+
+- Tag: =spec-vX.Y.Z=, sha256 of =spec.org= in the tag message. Authority.
+- MAJOR = incompatible theory change (fold/projection contract changes).
+- MINOR = additive: a new challenge is admitted / a vocabulary added.
+- PATCH = editorial (typo, clarification) with no semantic change.
+
+The "one MINOR per solved challenge" habit is fine but should be understood as
+"the spec grew to admit this challenge", not "the challenge has this version".
+
+*** Challenge line (new, per challenge)
+
+- Tag: =chal-NN-vX.Y.Z= (e.g. =chal-01-v1.1.0=), where =NN= is the challenge
+  number. Each challenge already carries its own local =spec vX.Y.Z= badge
+  (challenge 01 shows =spec-v1.1.0=); formalize that as the challenge line.
+- MAJOR = oracle contract changes (the pinned reference run differs).
+- MINOR = new defect added, new vocabulary/language binding added.
+- PATCH = data regen, doc fix, no oracle change.
+- Each challenge tag message records the spec it was built against:
+  =built-against: spec-v2.1.0=.
+
+*** Simulator line (new, per challenge simulator)
+
+- Tag: =sim-NN-vX.Y.Z= (e.g. =sim-06-v0.3.0=). Simulators start at 0.y while
+  experimental; 1.0.0 when their emitted-log format is promised stable.
+- MAJOR = emitted log schema or defect-taxonomy changes incompatibly.
+- MINOR = new generator mode (adversarial set added), new invariant covered.
+- PATCH = distribution tuning, seed handling, bug fix; identical schema.
+- Each simulator tag message records BOTH upstreams it targets:
+  =targets: chal-06-v1.0.0 spec-v2.1.0=.
+
+** How the three compose
+
+Composition is by explicit reference in tag messages plus one machine-readable
+manifest per challenge, so a reader can answer "which simulator, checking which
+challenge, against which spec" without decoding version numbers.
+
+Proposed manifest (data, committed under the challenge or the experiment):
+
+: challenge:   06-dfa-even-01
+: challenge-version: 1.0.0
+: built-against-spec: 2.1.0
+: simulator:    sim-06
+: simulator-version: 0.3.0
+: simulator-targets-spec: 2.1.0
+: simulator-targets-challenge: 1.0.0
+
+Rule of composition (the important part):
+
+- The simulator is COMPATIBLE with a challenge iff its
+  =simulator-targets-challenge= major matches the challenge major AND its
+  =simulator-targets-spec= major matches the spec major. Minor/patch drift is
+  allowed and only warned about.
+- A green CI-equivalent "the reference impl passes the simulator's logs" result
+  is only meaningful when stamped with the triple (spec, challenge, simulator)
+  versions. Store that triple with the result.
+
+** Verdict on the two sub-questions
+
+(a) As more challenges are solved: keep the spec MINOR-per-challenge habit, but
+give each challenge its own =chal-NN-vX.Y.Z= line so a challenge can be revised
+(new defect, new language binding) without touching the spec number.
+
+(b) When simulators are added: simulators get their OWN version line
+(=sim-NN-vX.Y.Z=), NOT the spec's semver. They are the fastest-moving artifact
+and would pollute the spec history. They point UP at the spec and challenge
+versions they target, via tag messages and a per-challenge manifest.
+
+* 2 Per-challenge simulators
+
+** What a simulator is here
+
+A per-challenge generator that emits log streams in the challenge's source
+vocabulary (the same shape the reference fold consumes). Three output modes:
+
+1. VALID logs - drawn from the language of valid traces (the fold succeeds,
+   all invariants hold, projection is well defined).
+2. ONE-DEFECT logs - a valid log perturbed by exactly one injected defect,
+   targeting exactly one invariant (schema, structure, or the unobservable).
+3. ADVERSARIAL edge cases - boundary/degenerate traces (empty log, max length,
+   simultaneous events, illegal-but-plausible orderings).
+
+** Evaluations this unlocks
+
+- Property-based testing: generate VALID logs, assert every invariant holds and
+  the projection matches an independently computed expectation; generate
+  ONE-DEFECT logs, assert the reference impl fires the RIGHT anomaly (not just
+  "an" anomaly - the specific invariant tied to the injected defect).
+- Differential testing: the simulator emits (log, expected-projection) pairs;
+  run each reference implementation (per language binding) on the log and diff
+  its projection against the expected one. This is the cross-language oracle.
+- Regression pinning: a fixed seed set becomes a reproducible corpus stamped
+  with the version triple from §1.
+
+** Table
+
+Value rating: H = high (property + differential both strong), M = medium
+(useful but the state space is small or a static corpus nearly suffices),
+L = low (near-trivial to generate by hand or low incremental value).
+
+| # | Challenge            | Sim? | Value | Generator relation / grammar                                                                 |
+|---+----------------------+------+-------+----------------------------------------------------------------------------------------------|
+| 01| order-lifecycle      | yes  | H     | walks of the chain placed < paid < shipped < delivered; valid = monotone prefix of the chain; defects = skip a step, regress, duplicate key |
+| 02| traffic-light        | yes  | M     | cyclic walk of the 3-4 phase cycle (period fixed); valid = respects the cycle order; defects = illegal phase jump, stuck phase |
+| 03| elevator             | yes  | H     | product automaton (car position x request set); valid = requests served in a legal discipline; rich adversarial space (starvation, request while moving) |
+| 04| lamp-two-switch      | yes  | M     | reversible transition graph (two toggles -> parity); valid = any path; defect = state not equal to XOR of toggles; small space |
+| 05| login-hierarchy      | yes  | H     | navigation over a containment tree; valid ancestor-set = an order ideal (down-set) of the tree, one leaf active; defect = flag without ancestor flag (broken down-set), two leaves |
+| 06| dfa-even-01          | yes  | H     | strings over {0,1}; valid = accepted by the DFA (EE final), plus rejected strings labeled; defect = mislabeled accept/reject, unknown symbol injection |
+| 07| lr-parser-fsm        | yes  | H     | automaton + stack; valid = shift/reduce traces of an accepting parse; defect = illegal reduce, stack underflow, shift past accept; grammar-derived |
+| 08| register-machine     | yes  | M     | SICP register-machine instruction traces; valid = well-formed run reaching halt; defect = read-before-write, bad jump target; large but low log-diversity |
+| 09| raft-replicated-sm   | yes  | H     | replicated log across N nodes; valid = logs consistent with one leader per term + commit rule; defect = divergent committed entry, term regression; adversarial = partition/reorder |
+
+Every challenge can have a simulator; the question is marginal value.
+
+** Rationale
+
+- Top value clusters where the "valid log" set is a genuinely non-trivial
+  formal language and where a defect maps cleanly onto exactly one invariant:
+  05 (down-sets of a poset), 06 (a regular language), 07 (a stack automaton),
+  and 09 (a consistency invariant across replicas). For these, hand-writing a
+  corpus that covers the invariant boundary is error-prone; a generator is the
+  right tool and property-based testing pays off immediately.
+- 01 and 03 are high because the differential angle (many language bindings)
+  makes an (log, expected-projection) oracle very valuable, and 03's product
+  state space has real adversarial depth (starvation, races).
+- 02, 04, 08 are medium: state spaces are small (02, 04) or log diversity is
+  low (08), so a static pinned corpus captures most of the value; a generator
+  is still nice for the one-defect-per-invariant discipline but is not urgent.
+
+* 3 miniKanren / core.logic analysis
+
+** The core idea
+
+A relation defines VALID logs declaratively. The same relation, run forward,
+ENUMERATES or SAMPLES valid logs; run with an added negated / defect
+constraint, it generates ADVERSARIAL invalid logs - effectively "running the
+checker backwards". This is the part that plain generative testing does not get
+for free: a hand-written generator and a hand-written checker are two artifacts
+that can drift; a relation is ONE artifact used both ways.
+
+Contrast with plain generative testing (e.g. a property-based library):
+
+- Plain generative: you write a generator (produces logs) AND a property
+  (checks logs). Two sources of truth. Great throughput, weak at "produce a log
+  that is invalid in exactly one specified way".
+- Relational: you write one relation for "valid log". Forward gives valid logs
+  for free. To get a targeted defect you conjoin a constraint that negates a
+  single invariant while keeping the rest satisfiable - the solver finds a log
+  that is invalid in exactly that way, if one exists. That is precisely the
+  ONE-DEFECT-per-invariant corpus we want, generated rather than authored.
+
+Caveats: miniKanren enumeration favors small terms and its search can be
+lopsided; for high-throughput fuzzing plain generative testing still wins.
+Relational shines for the small, structured, boundary corpus - not the bulk.
+
+** Worked idea A: login-hierarchy (05) - poset down-sets
+
+The valid ancestor-set is an order ideal (down-set) of the containment tree.
+Define a relation =ideal-o(tree, S)= that holds when S is downward closed: for
+every node in S, its parent is in S. Also =one-leaf-o(tree, S)= for the
+completeness rule.
+
+- Forward: =run* [S] (ideal-o tree S) (one-leaf-o tree S)= enumerates exactly
+  the valid ancestor-sets - the legal projections. Sample these as expected
+  outputs, and reverse-derive the navigation logs that reach them.
+- Backward / defect: =run 1 [S] (ideal-o tree S) (fresh [n] (in-o n S)
+  (not-parent-in-o n S))= is contradictory by construction; instead relax:
+  build =broken-ideal-o= that asserts a node in S whose parent is NOT in S.
+  Its solutions are precisely the down-set-violating projections - the targeted
+  defect corpus for the containment invariant. No separate defect generator.
+
+** Worked idea B: dfa-even-01 (06) - strings a DFA accepts/rejects
+
+Encode the transition relation =delta-o(state, sym, state')= as facts and a
+recursive =accepts-o(state, string, final)=.
+
+- Forward accept: =run n [s] (accepts-o EE s EE)= enumerates accepted strings
+  (even 0s and even 1s) shortest-first - the VALID corpus with known label.
+- Forward reject: =run n [s] (fresh [f] (accepts-o EE s f) (=/= f EE))=
+  enumerates rejected strings with their (non-accepting) final state - the
+  labeled-negative corpus, for free from the same relation.
+- Backward defect: take an accepted string and assert the WRONG label; or inject
+  an out-of-alphabet symbol via a relation that allows one =sym= outside {0,1}
+  and expect the "unknown symbol" anomaly. The mislabeled pairs are the
+  differential-test traps: the reference impl must disagree with the bad label.
+
+This is the cleanest fit: a DFA is literally a relation, and forward/backward
+give accepted-strings, rejected-strings, and boundary strings from one source.
+
+** Worked idea C: FSM paths (01 chain, 07 stack automaton)
+
+- 01 chain: =path-o(from, to, trace)= over the total order placed < paid <
+  shipped < delivered. Forward from placed enumerates monotone traces (valid).
+  A defect relation =skip-o= or =regress-o= asserts an edge not in the covering
+  relation, yielding "skipped a step" / "went backwards" logs mapped to the
+  structure invariant.
+- 07 LR parser: relational shift/reduce over grammar productions with the stack
+  as a logic term. Forward enumerates accepting parse traces; asserting a reduce
+  whose stack top does not match any production RHS yields illegal-reduce logs.
+  This is where relational is strongest AND where it is hardest - the stack term
+  and grammar make the relation nontrivial to write; treat as a stretch target.
+
+** Verdict
+
+miniKanren / core.logic genuinely helps for the STRUCTURED, SMALL, BOUNDARY
+corpus - especially 05 (down-sets), 06 (DFA), and 01 (chain paths), where the
+"valid log" set is a clean relation and the backward/defect direction gives the
+one-defect-per-invariant corpus without a second artifact. It does NOT replace
+plain generative testing for bulk fuzzing (throughput, large random logs); use
+both - relational for the invariant-boundary corpus, generative for volume. For
+09 (Raft) relational modeling is possible but the state space and search
+behavior make plain simulation the better first tool.
+
+* 4 Toolchain, dsp-dr prior art, and language recommendation
+
+** Local toolchain probe
+
+Probe run here (=for t in guile clojure bb racket chez scheme; do command -v
+$t; done=):
+
+| tool     | present | path                    |
+|----------+---------+-------------------------|
+| clojure  | yes     | /usr/local/bin/clojure  |
+| bb       | yes     | /usr/local/bin/bb (babashka v1.12.218) |
+| racket   | yes     | /usr/local/bin/racket   |
+| guile    | NO      | not installed here      |
+| chez     | NO      | not installed here      |
+| scheme   | NO      | not installed here      |
+
+Clojure is 1.12.0.1488. core.logic is NOT yet a declared dependency (nothing in
+=~/.clojure/deps.edn=) but is a one-line =:deps= away
+(=org.clojure/core.logic=). Guile is not installed on this host; it most likely
+lives on the dsp-dr hosts (the dsp-dr org is essentially a Guile shop, see
+below). Racket is present and ships a Racket-miniKanren port, so Racket is a
+viable Scheme-family fallback WITHOUT needing Guile.
+
+** dsp-dr prior art
+
+The dsp-dr org (22 repos) is overwhelmingly Guile Scheme. Scanned for
+=define-relation|minikanren|kanren|simulat|generat=. Findings:
+
+- No miniKanren / core.logic / kanren usage anywhere in dsp-dr. The "kanren"
+  grep hits were false positives (prose/vale style files). So there is NO prior
+  logic-programming code to reuse.
+- Relevant reusable GUILE prior art (patterns, not drop-in libraries):
+  - =guile-monkey-interpreter= - a full interpreter with lexer/parser/eval,
+    tests, examples. Closest analog to an FSM/automaton + a token/parse pipeline
+    (relevant to 06 DFA and 07 LR parser shapes).
+  - =guile-reasoning-model/src/generation= (=basic.scm=, =text-gen.scm=,
+    =kv-cache.scm=) - existing GENERATION code; a template for a generator
+    module structure in Guile.
+  - =guile-basestation= - stream/log processing (=route-parser.scm=,
+    =monitor-arrivals.scm=, =quick-check.scm=): parsing and folding event
+    streams, i.e. exactly the "fold a log" shape. Good pattern source for a log
+    simulator's emit/consume loop.
+  - =guile-cps-debugger= - CPS/state stepping and a visualizer; pattern source
+    for tracing state-machine execution.
+  - =guile-orchestrator-scratch=, =guile-nimbus= - project scaffolding (src /
+    tests / examples / Makefile) worth mirroring for layout.
+  - =agent-bus= - Python + org spec-driven layout (not Scheme), only marginally
+    relevant.
+
+Net: dsp-dr gives Guile IDIOMS and a log-stream/interpreter pattern library,
+but ZERO logic-programming prior art and nothing directly runnable for our
+simulators.
+
+** Language recommendation
+
+Recommend Clojure (core.logic) as the PRIMARY simulator language, with Racket
+as the ready Scheme-family fallback, and Guile deferred.
+
+Reasoning:
+- Availability: =clojure= and =bb= are installed here; Guile is not. Building
+  simulators we can actually run in this environment argues strongly for
+  Clojure. core.logic is the mature miniKanren host and is a one-line dep.
+- The logic-programming angle (§3) is the differentiator, and core.logic is the
+  best-supported miniKanren of the three. dsp-dr has NO kanren prior art in
+  either language, so we are not leaving reuse on the table by choosing Clojure.
+- babashka (=bb=) gives fast-start scripting for the plain-generative and
+  differential-driver glue (emit logs, shell out to each reference impl, diff),
+  while JVM Clojure hosts core.logic for the relational corpus.
+- Guile's advantage would be reuse of dsp-dr stream/interpreter idioms, but that
+  is pattern-level, not code-level, and Guile is absent here. Keep Guile as a
+  documented option for challenges that later move to a dsp-dr host; if a Scheme
+  is wanted on THIS host, Racket + Racket-miniKanren is available now.
+
+Which challenges suit which language:
+- Clojure + core.logic: 05 (down-sets), 06 (DFA), 01 (chain paths), 07 (LR,
+  stretch) - the relational corpus lives here.
+- Clojure/bb plain generative: 03 (elevator product space), 09 (Raft
+  simulation), 08 (register machine) - volume simulation and driver glue.
+- Guile (deferred / dsp-dr host): any challenge where we want to reuse the
+  basestation log-fold or monkey-interpreter parse patterns - realistically
+  06/07 if the work migrates to a Guile host. Not the first move.
+
+* 5 Concrete next step
+
+Prototype simulators for TWO challenges first, both in Clojure:
+
+1. 06 dfa-even-01, in Clojure with core.logic. Rationale: a DFA IS a relation,
+   so it is the smallest, cleanest demonstration of the forward/backward idea -
+   =accepts-o= enumerates accepted strings, the negated-final variant enumerates
+   rejected strings, and mislabeled pairs give the differential-test traps. It
+   proves the relational corpus approach end to end with minimal code.
+
+2. 05 login-hierarchy, in Clojure with core.logic. Rationale: down-sets of a
+   poset are the spec's central abstraction (spec §5); showing that =ideal-o= +
+   =one-leaf-o= forward-enumerate valid projections and that =broken-ideal-o=
+   generates exactly the containment-invariant defects validates the "run the
+   checker backwards" claim on the abstraction the whole ladder is built on.
+
+Deliverable shape for the prototype (a later experiment, NOT this doc):
+- a =deps.edn= adding =org.clojure/core.logic=;
+- one relation file per challenge (=dfa.clj=, =ideal.clj=);
+- an emitter producing (log, expected-projection) pairs at a fixed seed;
+- a =bb= driver that runs the existing reference impl and diffs projections;
+- outputs stamped with the version triple from §1
+  (=spec 2.1.0 / chal-06 x.y.z / sim-06 0.1.0=).
+
+Defer 03/09 (plain-generative, higher effort) and any Guile work until 06/05
+prove the pattern. Revisit Guile only if the work moves to a dsp-dr host and we
+want to reuse the basestation log-fold idioms.
+
+Everything above is a conjecture for the human and main agent to accept, amend,
+or reject. The spec remains the sole authority; simulators are downstream and
+must never be read as redefining an invariant.
