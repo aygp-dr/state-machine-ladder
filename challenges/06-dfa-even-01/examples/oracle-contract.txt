@@ -1,0 +1,14 @@
+== anomalies ==
+W-05 unknown_symbol x
+W-06 null_ts 0
+W-07 dup 0
+W-08 I6 1 before 0
+== result ==
+W-01 state=EE accept=yes
+W-02 state=OO accept=no
+W-03 state=EE accept=yes
+W-04 state=OE accept=no
+W-05 state=OO accept=no
+W-06 state=OO accept=no
+W-07 state=OE accept=no
+W-08 state=EO accept=no
