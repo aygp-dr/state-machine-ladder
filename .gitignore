@@ -9,3 +9,9 @@ erl_crash.dump
 .stderr
 *.stderr
 assets/banner.raw.png
+
+# clojure simulator scratch
+.cpcache/
+**/.cpcache/
+.words.txt
+**/.words.txt

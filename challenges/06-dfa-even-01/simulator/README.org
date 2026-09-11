@@ -1,0 +1,41 @@
+#+TITLE: 06 dfa-even-01 - core.logic log generator (simulator)
+#+AUTHOR: Aidan Pace
+#+OPTIONS: toc:nil num:nil ^:nil
+#+STARTUP: overview
+
+Version: =sim-06-v0.1.0= (prototype). Simulators version independently of the
+spec (see =experiments/003-simulator-speculation=): the spec is the grading
+instrument, a simulator is a generator/evaluator that targets a challenge.
+
+* What this is
+
+A generative log simulator for challenge 06, written in Clojure + core.logic.
+The DFA is encoded once as a RELATION; running it forward enumerates words the
+DFA accepts, and the same relation with a single disequality (=(!= final EE)=)
+runs "backward" to enumerate words it rejects. One relation gives both the valid
+corpus and the adversarial corpus, so a generator and a checker cannot drift
+apart.
+
+* Files
+
+- =gen.clj= - the relation (=deltao=, =runo=, =accepto=, =rejecto=) and a small
+  driver that prints =<accept|reject> <word>= lines.
+- =eval.py= - differential eval: folds each generated word through the /reference/
+  implementation's own transition function and checks the accept/reject verdict
+  matches the relation's label.
+- =run.sh= - generate a corpus, then eval the reference against it.
+- =deps.edn= - pins =org.clojure/core.logic 1.0.1=.
+
+* Run
+
+: challenges/06-dfa-even-01/simulator/run.sh
+: # => eval: 16 agree, 0 mismatch   (green = reference agrees with the relation)
+
+Requires =clojure= (and network on first run to fetch core.logic from Maven).
+
+* Why this challenge first
+
+Per =experiments/003-simulator-speculation=, a DFA is literally a relation, so
+core.logic pays off immediately: valid, rejected, and boundary words all come
+from one source. Next candidates: 05 login-hierarchy (down-sets/order-ideals of
+the containment tree) and 07 lr-parser (grammar-derived shift/reduce traces).
