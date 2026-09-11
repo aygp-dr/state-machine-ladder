@@ -1,0 +1,20 @@
+== anomalies ==
+ELV-03 E-teleport 1->3
+ELV-04 E-doors move:2
+ELV-05 E-range 0
+ELV-06 E-serve 2
+ELV-07 unknown_event jump
+ELV-08 null_ts press:2
+ELV-09 dup press:2
+ELV-10 I6 move:2
+== current state ==
+ELV-01 floor=3 doors=closed pending=-
+ELV-02 floor=2 doors=closed pending=-
+ELV-03 floor=3 doors=closed pending=3
+ELV-04 floor=2 doors=open pending=2
+ELV-05 floor=0 doors=closed pending=-
+ELV-06 floor=1 doors=closed pending=-
+ELV-07 floor=1 doors=closed pending=2
+ELV-08 floor=1 doors=closed pending=2
+ELV-09 floor=1 doors=closed pending=2
+ELV-10 floor=2 doors=closed pending=2
